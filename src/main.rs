@@ -32,90 +32,67 @@ pub enum ClientError {
     FailedConnectingToSocket,
 }
 
-/// Gets the name/file of the socket
-// TODO: Needs to be generated
-fn socket_name() -> Name<'static> {
-    if GenericNamespaced::is_supported() {
-        "example.sock".to_ns_name::<GenericNamespaced>().unwrap()
-    } else {
-        "/home/spencer/example.sock"
-            .to_fs_name::<GenericFilePath>()
-            .unwrap()
-    }
-}
-
-struct MyModel;
-
-impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
-    type ClientImpl = MyClient;
-    type ServerImpl = MyServer;
-
-    fn socket_name() -> Name<'static> {
-        socket_name()
-    }
-
-    /// Make a new client, errors if unable to connect to server
-    fn client() -> Result<Self::ClientImpl, ClientError> {
-        let name = Self::socket_name();
-        let stream = Stream::connect(name).map_err(|_| ClientError::FailedConnectingToSocket)?;
-        let conn = Connection::new(stream);
-        Ok(MyClient { connection: conn })
-    }
-
-    /// Try to create a new server instance. Needs to be created before clients.
-    fn server() -> Result<Self::ServerImpl, ServerError> {
-        let name = Self::socket_name();
-        let opts = ListenerOptions::new().name(name);
-        // Can fail for IO reasons
-        let listener = opts
-            .create_sync()
-            .map_err(|_| ServerError::CouldntOpenSocket)?;
-        Ok(MyServer { listener })
-    }
-}
-
-pub trait ClientServerModel<C, S> {
-    type ClientImpl: Client<C, S>;
-    type ServerImpl: Server<S, C>;
-
-    fn socket_name() -> Name<'static>;
-    /// Gets a client
-    fn client() -> Result<Self::ClientImpl, ClientError>;
-    /// Gets a server
-    fn server() -> Result<Self::ServerImpl, ServerError>;
-}
-
-pub trait Client<T, R> {
-    fn send(&mut self, msg: T) -> Result<(), ConnectionError>;
-    fn receive(&mut self) -> Result<R, ConnectionError>;
-}
-
 /// Client that is able to connect to a server and send/receive messages
-struct MyClient {
-    connection: Connection<ClientMessage, ServerMessage>,
+pub struct Client<T, R>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+{
+    connection: Connection<T, R>,
+    _tx: PhantomData<T>,
+    _rx: PhantomData<R>,
 }
 
-impl Client<ClientMessage, ServerMessage> for MyClient {
+impl<T, R> Client<T, R>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+{
+    /// Create a new client given a connection
+    pub fn new(connection: Connection<T, R>) -> Self {
+        Self {
+            connection,
+            _tx: PhantomData,
+            _rx: PhantomData,
+        }
+    }
     /// Send a message to the server
-    fn send(&mut self, msg: ClientMessage) -> Result<(), ConnectionError> {
+    pub fn send(&mut self, msg: T) -> Result<(), ConnectionError> {
         self.connection.send(msg)
     }
 
     /// Receive a message from the server
-    fn receive(&mut self) -> Result<ServerMessage, ConnectionError> {
+    pub fn receive(&mut self) -> Result<R, ConnectionError> {
         self.connection.receive()
     }
 }
 
 /// A instance of a server
-struct MyServer {
+pub struct Server<T, R>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+{
     listener: LocalSocketListener,
+    _tx: PhantomData<T>,
+    _rx: PhantomData<R>,
 }
 
-impl Server<ServerMessage, ClientMessage> for MyServer {
-    fn connections(
-        &self,
-    ) -> impl Iterator<Item = Result<Connection<ServerMessage, ClientMessage>, ServerError>> {
+impl<T, R> Server<T, R>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+{
+    // Get a new Server listening on a socket
+    pub fn new(listener: LocalSocketListener) -> Self {
+        Self {
+            listener,
+            _tx: PhantomData,
+            _rx: PhantomData,
+        }
+    }
+    /// Create an iterator over all connections
+    pub fn connections(&self) -> impl Iterator<Item = Result<Connection<T, R>, ServerError>> {
         self.listener.incoming().map(|conn| {
             conn.map(Connection::new)
                 .map_err(|_| ServerError::IncomingConnectionFailed)
@@ -123,16 +100,38 @@ impl Server<ServerMessage, ClientMessage> for MyServer {
     }
 }
 
-pub trait Server<T, R> {
-    /// Gets an infinite iterator over client connections
-    fn connections(&self) -> impl Iterator<Item = Result<Connection<T, R>, ServerError>>;
+pub trait ClientServerModel<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    fn socket_name() -> Name<'static>;
+
+    /// Make a new client, errors if unable to connect to server
+    fn client() -> Result<Client<C, S>, ClientError> {
+        let name = Self::socket_name();
+        let stream = Stream::connect(name).map_err(|_| ClientError::FailedConnectingToSocket)?;
+        let conn = Connection::new(stream);
+        Ok(Client::new(conn))
+    }
+
+    /// Try to create a new server instance. Needs to be created before clients.
+    fn server() -> Result<Server<S, C>, ServerError> {
+        let name = Self::socket_name();
+        let opts = ListenerOptions::new().name(name);
+        // Can fail for IO reasons
+        let listener = opts
+            .create_sync()
+            .map_err(|_| ServerError::CouldntOpenSocket)?;
+        Ok(Server::new(listener))
+    }
 }
 
 /// Represents a connection that can send and receive messages
 // S[end] and R[eceive]
-struct Connection<S, R> {
+pub struct Connection<T, R> {
     connection: BufReader<Stream>,
-    _send: PhantomData<S>,
+    _send: PhantomData<T>,
     _receive: PhantomData<R>,
 }
 
@@ -199,22 +198,6 @@ where
     }
 }
 
-/// Example server messages
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-enum ServerMessage {
-    Ready,
-    Ok,
-    Fail,
-}
-
-/// Example client messages
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-enum ClientMessage {
-    Run,
-    Jump,
-    Hide,
-}
-
 const HEADER_MAGIC: &[u8; 4] = b"heyo";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -277,6 +260,43 @@ impl Packet {
         vec.append(&mut self.bytes);
         vec
     }
+}
+
+/// Gets the name/file of the socket
+// TODO: Needs to be generated
+fn socket_name() -> Name<'static> {
+    if GenericNamespaced::is_supported() {
+        "example.sock".to_ns_name::<GenericNamespaced>().unwrap()
+    } else {
+        "/home/spencer/example.sock"
+            .to_fs_name::<GenericFilePath>()
+            .unwrap()
+    }
+}
+
+/// Example Model
+struct MyModel;
+
+impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
+    fn socket_name() -> Name<'static> {
+        socket_name()
+    }
+}
+
+/// Example server messages
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+enum ServerMessage {
+    Ready,
+    Ok,
+    Fail,
+}
+
+/// Example client messages
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+enum ClientMessage {
+    Run,
+    Jump,
+    Hide,
 }
 
 fn main() {
