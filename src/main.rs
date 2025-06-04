@@ -33,6 +33,7 @@ pub enum ClientError {
 }
 
 /// Gets the name/file of the socket
+// TODO: Needs to be generated
 fn socket_name() -> Name<'static> {
     if GenericNamespaced::is_supported() {
         "example.sock".to_ns_name::<GenericNamespaced>().unwrap()
@@ -43,50 +44,76 @@ fn socket_name() -> Name<'static> {
     }
 }
 
-/// Client that is able to connect to a server and send/receive messages
-struct Client {
-    connection: Connection<ClientMessage, ServerMessage>,
-}
+struct MyModel;
 
-impl Client {
+impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
+    type ClientImpl = MyClient;
+    type ServerImpl = MyServer;
+
+    fn socket_name() -> Name<'static> {
+        socket_name()
+    }
+
     /// Make a new client, errors if unable to connect to server
-    pub fn init() -> Result<Self, ClientError> {
-        let name = socket_name();
+    fn client() -> Result<Self::ClientImpl, ClientError> {
+        let name = Self::socket_name();
         let stream = Stream::connect(name).map_err(|_| ClientError::FailedConnectingToSocket)?;
         let conn = Connection::new(stream);
-        Ok(Client { connection: conn })
+        Ok(MyClient { connection: conn })
     }
 
-    /// Send a message to the server
-    pub fn send(&mut self, msg: ClientMessage) -> Result<(), ConnectionError> {
-        self.connection.send(msg)
-    }
-
-    /// Receive a message from the server
-    pub fn receive(&mut self) -> Result<ServerMessage, ConnectionError> {
-        self.connection.receive()
-    }
-}
-
-/// A instance of a server
-struct Server {
-    listener: LocalSocketListener,
-}
-
-impl Server {
     /// Try to create a new server instance. Needs to be created before clients.
-    pub fn init() -> Result<Self, ServerError> {
-        let name = socket_name();
+    fn server() -> Result<Self::ServerImpl, ServerError> {
+        let name = Self::socket_name();
         let opts = ListenerOptions::new().name(name);
         // Can fail for IO reasons
         let listener = opts
             .create_sync()
             .map_err(|_| ServerError::CouldntOpenSocket)?;
-        Ok(Server { listener })
+        Ok(MyServer { listener })
+    }
+}
+
+pub trait ClientServerModel<C, S> {
+    type ClientImpl: Client<C, S>;
+    type ServerImpl: Server<S, C>;
+
+    fn socket_name() -> Name<'static>;
+    /// Gets a client
+    fn client() -> Result<Self::ClientImpl, ClientError>;
+    /// Gets a server
+    fn server() -> Result<Self::ServerImpl, ServerError>;
+}
+
+pub trait Client<T, R> {
+    fn send(&mut self, msg: T) -> Result<(), ConnectionError>;
+    fn receive(&mut self) -> Result<R, ConnectionError>;
+}
+
+/// Client that is able to connect to a server and send/receive messages
+struct MyClient {
+    connection: Connection<ClientMessage, ServerMessage>,
+}
+
+impl Client<ClientMessage, ServerMessage> for MyClient {
+    /// Send a message to the server
+    fn send(&mut self, msg: ClientMessage) -> Result<(), ConnectionError> {
+        self.connection.send(msg)
     }
 
-    /// Gets an infinite iterator over client connections
-    pub fn connections(
+    /// Receive a message from the server
+    fn receive(&mut self) -> Result<ServerMessage, ConnectionError> {
+        self.connection.receive()
+    }
+}
+
+/// A instance of a server
+struct MyServer {
+    listener: LocalSocketListener,
+}
+
+impl Server<ServerMessage, ClientMessage> for MyServer {
+    fn connections(
         &self,
     ) -> impl Iterator<Item = Result<Connection<ServerMessage, ClientMessage>, ServerError>> {
         self.listener.incoming().map(|conn| {
@@ -94,6 +121,11 @@ impl Server {
                 .map_err(|_| ServerError::IncomingConnectionFailed)
         })
     }
+}
+
+pub trait Server<T, R> {
+    /// Gets an infinite iterator over client connections
+    fn connections(&self) -> impl Iterator<Item = Result<Connection<T, R>, ServerError>>;
 }
 
 /// Represents a connection that can send and receive messages
@@ -248,8 +280,8 @@ impl Packet {
 }
 
 fn main() {
-    let server = Server::init().unwrap();
-    let mut client = Client::init().unwrap();
+    let server = MyModel::server().unwrap();
+    let mut client = MyModel::client().unwrap();
 
     std::thread::spawn(move || {
         for conn in server.connections() {
@@ -276,4 +308,22 @@ fn main() {
     // dbg!(env!("CARGO_PKG_VERSION_MINOR"));
     // dbg!(env!("CARGO_PKG_VERSION_PATCH"));
     // dbg!(env!("CARGO_PKG_VERSION_PRE"));
+}
+
+mod test {
+
+    /// Maybe something like
+    /// ```
+    /// #[derive(ClientServerModel)]
+    /// #[server_message(ServerMessage)]
+    /// #[client_message(ClientMessage)]
+    /// ```
+    #[allow(dead_code)]
+    pub struct Model;
+
+    #[allow(dead_code)]
+    fn tmp() {
+        // let client = Model::client();
+        // let server = Model::server();
+    }
 }
