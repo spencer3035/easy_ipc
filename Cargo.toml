@@ -1,0 +1,10 @@
+[package]
+name = "test_easy_ipc"
+version = "0.1.2"
+edition = "2024"
+
+[dependencies]
+bitcode = { version = "0.6.6", features = ["serde"] }
+# easy_ipc = { path = "../easy_ipc/"}
+interprocess = "2.2.3"
+serde = { version = "1.0.219", features = ["derive"] }
