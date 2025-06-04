@@ -1,0 +1,47 @@
+
+use {
+    crate::connection::Connection,
+    interprocess::local_socket::prelude::*,
+    serde::{Deserialize, Serialize},
+    std::marker::PhantomData,
+};
+
+/// Server errors
+#[derive(Debug, PartialEq, Eq)]
+pub enum ServerError {
+    IncomingConnectionFailed,
+    CouldntOpenSocket,
+}
+
+/// A instance of a server
+pub struct Server<T, R>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+{
+    listener: LocalSocketListener,
+    _tx: PhantomData<T>,
+    _rx: PhantomData<R>,
+}
+
+impl<T, R> Server<T, R>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+{
+    // Get a new Server listening on a socket
+    pub fn new(listener: LocalSocketListener) -> Self {
+        Self {
+            listener,
+            _tx: PhantomData,
+            _rx: PhantomData,
+        }
+    }
+    /// Create an iterator over all connections
+    pub fn connections(&self) -> impl Iterator<Item = Result<Connection<T, R>, ServerError>> {
+        self.listener.incoming().map(|conn| {
+            conn.map(Connection::new)
+                .map_err(|_| ServerError::IncomingConnectionFailed)
+        })
+    }
+}
