@@ -1,33 +1,17 @@
 use {
-    interprocess::local_socket::{GenericFilePath, GenericNamespaced, Name, prelude::*},
-    model::ClientServerModel,
+    interprocess::local_socket::Name,
     serde::{Deserialize, Serialize},
+    test_easy_ipc::default_socket_name,
 };
 
-pub mod client;
-pub mod connection;
-pub mod model;
-mod packet;
-pub mod server;
-
-/// Gets the name/file of the socket
-// TODO: Needs to be generated
-fn socket_name() -> Name<'static> {
-    if GenericNamespaced::is_supported() {
-        "example.sock".to_ns_name::<GenericNamespaced>().unwrap()
-    } else {
-        "/home/spencer/example.sock"
-            .to_fs_name::<GenericFilePath>()
-            .unwrap()
-    }
-}
+use test_easy_ipc::model::ClientServerModel;
 
 /// Example Model
 struct MyModel;
 
 impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
     fn socket_name() -> Name<'static> {
-        socket_name()
+        default_socket_name()
     }
 }
 
