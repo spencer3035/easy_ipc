@@ -135,18 +135,25 @@ where
 
     /// Receive a message from the other end of the connection
     pub fn receive(&mut self) -> Result<R, ConnectionError> {
-        let mut header: [u8; 1] = [0];
+        let mut header: [u8; Header::LENGTH] = [0; Header::LENGTH];
         println!("Reading header");
         let nread = self
             .connection
             .read(&mut header)
             .map_err(|_| ConnectionError::ReadFailed)?;
-        // nread should match header size. Will be bigger than 1 in the future
-        debug_assert_eq!(nread, 1, "Couldn't read the header: {:?}", header);
-        if nread != 1 {
+
+        if nread != Header::LENGTH {
+            debug_assert_eq!(
+                nread,
+                Header::LENGTH,
+                "Couldn't read the header: {:?}",
+                header
+            );
             return Err(ConnectionError::UnexepctedEof);
         }
-        let len = header[0];
+        let header =
+            Header::parse_header(&header).map_err(|_| ConnectionError::DeserilizationFailed)?;
+        let len = header.len;
         let mut data = vec![0; len as usize];
         let nread = self
             .connection
@@ -176,9 +183,49 @@ enum ClientMessage {
     Hide,
 }
 
+const HEADER_MAGIC: &[u8; 4] = b"heyo";
+
+#[derive(Debug, PartialEq, Eq)]
+enum ParseHeaderError {
+    MagicBytesMissing,
+}
+
+struct Header {
+    len: u32,
+}
+
+impl Header {
+    const LENGTH: usize = HEADER_MAGIC.len() + size_of::<u32>();
+
+    fn create_header(data: &[u8]) -> Self {
+        let len = data.len();
+        assert!(len <= u32::MAX as usize);
+        let len = len as u32;
+        Header { len }
+    }
+
+    fn parse_header(bytes: &[u8; Header::LENGTH]) -> Result<Self, ParseHeaderError> {
+        for (x, y) in HEADER_MAGIC.iter().zip(bytes.iter()) {
+            if x != y {
+                return Err(ParseHeaderError::MagicBytesMissing);
+            }
+        }
+        let len = u32::from_le_bytes(bytes[4..Header::LENGTH].try_into().unwrap());
+        Ok(Header { len })
+    }
+
+    fn to_bytes(self) -> Vec<u8> {
+        let mut res = HEADER_MAGIC.to_vec();
+        for val in self.len.to_le_bytes() {
+            res.push(val);
+        }
+        res
+    }
+}
+
 /// A packet to be sent over a socket
 struct Packet {
-    len: u8,
+    header: Header,
     bytes: Vec<u8>,
 }
 
@@ -186,15 +233,15 @@ impl Packet {
     /// Make a new packet from data
     fn new(data: Vec<u8>) -> Self {
         assert!(data.len() <= u8::max as usize);
+        let header = Header::create_header(&data);
         Packet {
-            len: data.len() as u8,
+            header,
             bytes: data,
         }
     }
     /// Convert packet to bytes
     fn to_bytes(mut self) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(self.bytes.len() + 1);
-        vec.push(self.len);
+        let mut vec = self.header.to_bytes();
         vec.append(&mut self.bytes);
         vec
     }
