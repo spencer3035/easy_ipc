@@ -8,3 +8,5 @@ interprocess = "2.2.3"
 users = "0.11.0"
 bitcode = { version = "0.6.6", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
+signal-hook = "0.3.18"
+libc = "0.2.172"

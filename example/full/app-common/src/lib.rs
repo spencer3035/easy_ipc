@@ -1,11 +1,13 @@
+use std::path::PathBuf;
+
 use easy_ipc::{prelude::*, socket_name};
 use serde::{Deserialize, Serialize};
 
 pub struct MyModel;
 
 impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
-    fn socket_name() -> easy_ipc::model::Name {
-        socket_name!().unwrap()
+    fn socket_path() -> PathBuf {
+        socket_name!()
     }
 }
 

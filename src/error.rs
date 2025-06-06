@@ -30,6 +30,8 @@ impl Display for ConnectionError {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum InitError {
+    /// Server is already connected an running, can't create a new one.
+    ServerAlreadyRunning,
     /// Generic IO error like permission denied
     FailedConnectingToSocket(std::io::Error),
     /// Specific to servers trying to connect to already existing sockets. This can happen if

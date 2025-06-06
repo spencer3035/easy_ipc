@@ -1,7 +1,10 @@
 use app_common::{ClientMessage, MyModel, ServerMessage};
 use easy_ipc::model::ClientServerModel;
+use signal_hook::{consts::*, iterator::Signals};
 
 fn main() {
+    // setup_handlers();
+
     let server = MyModel::server().unwrap();
     for conn in server.connections() {
         let mut conn = conn.unwrap();
