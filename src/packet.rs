@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 const HEADER_MAGIC: &[u8; 4] = b"heyo";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -5,19 +7,27 @@ pub(crate) enum ParseHeaderError {
     MagicBytesMissing,
 }
 
-pub(crate) struct Header {
+pub(crate) struct Header<M>
+where
+    M: MagicBytes,
+{
     len: u32,
+    _marker: PhantomData<M>,
+}
+
+pub struct IpcMagicBytes;
+impl MagicBytes for IpcMagicBytes {
+    fn magic_bytes() -> &'static [u8] {
+        b"v010"
+    }
 }
 
 // TODO: Implement this once we have better testing in place
-#[allow(dead_code)]
-trait MagicBytes {
+pub trait MagicBytes {
     /// Magic bytes at the beginning of the header to check for correctness.
     ///
     /// This should not change, if const trait functions existed, this would be annotated with it.
-    fn magic_bytes() -> &'static [u8] {
-        b"1234"
-    }
+    fn magic_bytes() -> &'static [u8];
 }
 
 // Some helpful env vars for the future
@@ -26,9 +36,14 @@ trait MagicBytes {
 // dbg!(env!("CARGO_PKG_VERSION_MINOR"));
 // dbg!(env!("CARGO_PKG_VERSION_PATCH"));
 // dbg!(env!("CARGO_PKG_VERSION_PRE"));
-impl Header {
+impl<M> Header<M>
+where
+    M: MagicBytes,
+{
     /// The length of the header in bytes
-    pub(crate) const LENGTH: usize = HEADER_MAGIC.len() + size_of::<u32>();
+    pub(crate) fn header_bytes() -> usize {
+        M::magic_bytes().len() + size_of::<u32>()
+    }
 
     /// The length of the data portion of the packet.
     pub(crate) fn length(&self) -> usize {
@@ -40,18 +55,31 @@ impl Header {
         let len = data.len();
         assert!(len <= u32::MAX as usize);
         let len = len as u32;
-        Header { len }
+        Header {
+            len,
+            _marker: PhantomData,
+        }
     }
 
     /// Parse header and check that magic bytes are correct
-    pub fn parse_header(bytes: &[u8; Header::LENGTH]) -> Result<Self, ParseHeaderError> {
+    pub fn parse_header(bytes: &[u8]) -> Result<Self, ParseHeaderError> {
+        if bytes.len() != Self::header_bytes() {
+            return Err(ParseHeaderError::MagicBytesMissing);
+        }
         for (x, y) in HEADER_MAGIC.iter().zip(bytes.iter()) {
             if x != y {
                 return Err(ParseHeaderError::MagicBytesMissing);
             }
         }
-        let len = u32::from_le_bytes(bytes[4..Header::LENGTH].try_into().unwrap());
-        Ok(Header { len })
+        let len = u32::from_le_bytes(
+            bytes[M::magic_bytes().len()..Self::header_bytes()]
+                .try_into()
+                .unwrap(),
+        );
+        Ok(Header {
+            len,
+            _marker: PhantomData,
+        })
     }
 
     /// Convert the header to bytes
@@ -65,12 +93,18 @@ impl Header {
 }
 
 /// A packet to be sent over a socket
-pub struct Packet {
-    header: Header,
+pub struct Packet<M>
+where
+    M: MagicBytes,
+{
+    header: Header<M>,
     bytes: Vec<u8>,
 }
 
-impl Packet {
+impl<M> Packet<M>
+where
+    M: MagicBytes,
+{
     /// Make a new packet from data
     pub fn new(data: Vec<u8>) -> Self {
         let header = Header::create_header(&data);

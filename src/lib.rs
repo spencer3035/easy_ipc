@@ -36,7 +36,7 @@ pub mod error;
 /// Definition of client server model
 pub mod model;
 /// Packets used to send data across the sockets
-mod packet;
+pub(crate) mod packet;
 /// Server process
 pub mod server;
 

@@ -1,6 +1,8 @@
 use std::sync::atomic::AtomicBool;
 
+use crate::packet::{IpcMagicBytes, MagicBytes};
 use signal_hook::{consts::*, iterator::Signals};
+
 use {
     crate::{client::Client, connection::Connection, error::InitError, server::Server},
     interprocess::local_socket::{GenericFilePath, ListenerOptions, Name, Stream, prelude::*},
@@ -62,10 +64,11 @@ static HANDLERS_SET: AtomicBool = AtomicBool::new(false);
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
 /// server messages are denoted by the generic `S`.
-pub trait ClientServerModel<C, S>
+pub trait ClientServerModel<C, S, M = IpcMagicBytes>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
+    M: MagicBytes,
 {
     /// The location that the socket will be stored. Can be overwriten if the default location is
     /// not desired. See [`socket_name`] and [`default_socket`] for easy method of creating a
@@ -92,7 +95,7 @@ where
 
     /// Make a new client, errors if unable to connect to server. Multiple clients can exist across
     /// threads and processes.
-    fn client() -> Result<Client<C, S>, InitError> {
+    fn client() -> Result<Client<C, S, M>, InitError> {
         let name = pathbuf_to_interprocess_name(Self::socket_path())?;
         let stream = Stream::connect(name).map_err(|e| InitError::FailedConnectingToSocket(e))?;
         let conn = Connection::new(stream);
@@ -104,7 +107,7 @@ where
     /// Needs to be created before clients. Only one server can exist at a time.
     ///
     /// Returns various kinds of errors that could happend when trying to init a new server.
-    fn server() -> Result<Server<S, C>, InitError> {
+    fn server() -> Result<Server<S, C, M>, InitError> {
         let name = pathbuf_to_interprocess_name(Self::socket_path())?;
         let opts = ListenerOptions::new().name(name);
         Self::server_with_opts(opts)
@@ -113,7 +116,7 @@ where
     /// Create a server given options.
     ///
     /// See: [`ClientServerModel::server`]
-    fn server_with_opts(opts: ListenerOptions) -> Result<Server<S, C>, InitError> {
+    fn server_with_opts(opts: ListenerOptions) -> Result<Server<S, C, M>, InitError> {
         let name = pathbuf_to_interprocess_name(Self::socket_path())?;
         let opts = opts.name(name);
         // Can fail for IO reasons

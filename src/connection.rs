@@ -1,7 +1,7 @@
 use {
     crate::{
         error::ConnectionError,
-        packet::{Header, Packet},
+        packet::{Header, IpcMagicBytes, MagicBytes, Packet},
     },
     interprocess::local_socket::Stream,
     serde::{Deserialize, Serialize},
@@ -13,16 +13,23 @@ use {
 
 /// Represents a connection that can send and receive messages
 // S[end] and R[eceive]
-pub struct Connection<T, R> {
+pub struct Connection<T, R, M = IpcMagicBytes>
+where
+    T: Serialize,
+    R: for<'de> Deserialize<'de>,
+    M: MagicBytes,
+{
     connection: BufReader<Stream>,
-    _send: PhantomData<T>,
-    _receive: PhantomData<R>,
+    _tx: PhantomData<T>,
+    _rx: PhantomData<R>,
+    _magic: PhantomData<M>,
 }
 
-impl<S, R> Connection<S, R>
+impl<T, R, M> Connection<T, R, M>
 where
-    S: Serialize,
+    T: Serialize,
     R: for<'de> Deserialize<'de>,
+    M: MagicBytes,
 {
     /// Make a new connection given a stream.
     // NOTE: This method should not be exposed publicly
@@ -30,16 +37,17 @@ where
         let connection = BufReader::new(connection);
         Connection {
             connection,
-            _send: PhantomData,
-            _receive: PhantomData,
+            _tx: PhantomData,
+            _rx: PhantomData,
+            _magic: PhantomData,
         }
     }
 
     /// Send a message to the other end of the connection.
-    pub fn send(&mut self, message: S) -> Result<(), ConnectionError> {
+    pub fn send(&mut self, message: T) -> Result<(), ConnectionError> {
         let bytes =
             bitcode::serialize(&message).map_err(|e| ConnectionError::SerilizationFailed(e))?;
-        let packet = Packet::new(bytes);
+        let packet: Packet<M> = Packet::new(bytes);
         let packet_bytes = packet.to_bytes();
         self.connection
             .get_mut()
@@ -50,16 +58,17 @@ where
 
     /// Receive a message from the other end of the connection
     pub fn receive(&mut self) -> Result<R, ConnectionError> {
-        let mut header: [u8; Header::LENGTH] = [0; Header::LENGTH];
+        let mut header = vec![0; Header::<M>::header_bytes()];
         let nread = self
             .connection
             .read(&mut header)
             .map_err(|e| ConnectionError::ReadFailed(e))?;
 
-        if nread != Header::LENGTH {
+        if nread != Header::<M>::header_bytes() {
             return Err(ConnectionError::UnexepctedEof);
         }
-        let header = Header::parse_header(&header).map_err(|_| ConnectionError::HeaderMismatch)?;
+        let header =
+            Header::<M>::parse_header(&header).map_err(|_| ConnectionError::HeaderMismatch)?;
         let len = header.length();
         let mut data = vec![0; len as usize];
         let nread = self
