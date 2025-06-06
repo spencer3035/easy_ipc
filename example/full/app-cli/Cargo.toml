@@ -1,0 +1,9 @@
+[package]
+name = "app-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+easy_ipc = { path = "../../../" }
+app-common = { path = "../app-common" }
+clap = { version = "4.5.39", features = ["derive"] }
