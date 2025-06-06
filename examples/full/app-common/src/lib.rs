@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use easy_ipc::{prelude::*, socket_name};
 use serde::{Deserialize, Serialize};
 
+/// Define you model and implement [`ClientServerModel`] for it.
 pub struct MyModel;
 
 impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {

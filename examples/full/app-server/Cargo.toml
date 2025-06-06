@@ -6,6 +6,3 @@ edition = "2024"
 [dependencies]
 easy_ipc = { path = "../../../" }
 app-common = { path = "../app-common" }
-ctrlc = "3.4.7"
-signal-hook = "0.3.18"
-libc = "0.2.172"
