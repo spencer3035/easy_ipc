@@ -1,3 +1,5 @@
+# This Cargo.toml is not actually used in the easy_icp project, it is just here
+# as an exmaple of how to set up a multi-package workspace to use it
 [workspace]
 resolver = "3"
 members = ["app-cli", "app-common", "app-server"]
