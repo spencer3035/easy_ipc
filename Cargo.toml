@@ -1,5 +1,5 @@
 [package]
-name = "test_easy_ipc"
+name = "easy_ipc"
 version = "0.1.2"
 edition = "2024"
 

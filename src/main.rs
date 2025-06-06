@@ -1,24 +1,14 @@
-use {
-    interprocess::local_socket::Name,
-    serde::{Deserialize, Serialize},
-    test_easy_ipc::default_socket_name,
-};
+use serde::{Deserialize, Serialize};
 
-use test_easy_ipc::model::ClientServerModel;
+use easy_ipc::prelude::ClientServerModel;
 
 /// Example Model
 struct MyModel;
-
-impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
-    fn socket_name() -> Name<'static> {
-        default_socket_name()
-    }
-}
+impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {}
 
 /// Example server messages
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 enum ServerMessage {
-    Ready,
     Ok,
     Fail,
 }
@@ -26,30 +16,38 @@ enum ServerMessage {
 /// Example client messages
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 enum ClientMessage {
-    Run,
-    Jump,
-    Hide,
+    Start,
+    Stop,
+}
+
+/// Run your server
+fn run_server() {
+    // Make a new server
+    let server = MyModel::server().unwrap();
+
+    // Handle incomming client connections
+    for conn in server.connections() {
+        let mut conn = conn.unwrap();
+        let client_msg = conn.receive().unwrap();
+        // receive
+        dbg!(client_msg);
+        conn.send(ServerMessage::Ok).unwrap();
+    }
 }
 
 fn main() {
-    let server = MyModel::server().unwrap();
+    // Make a new client
     let mut client = MyModel::client().unwrap();
 
+    // Spawn server in new thread (You would do this
     std::thread::spawn(move || {
-        for conn in server.connections() {
-            println!("Got new connection!");
-            let mut conn = conn.unwrap();
-            let client_msg = conn.receive().unwrap();
-            // receive
-            dbg!(client_msg);
-            conn.send(ServerMessage::Ok).unwrap();
-        }
+        run_server();
     });
 
     // This would create a deadlock
     // assert_eq!(client.receive().unwrap(), ServerMessage::Ready);
     println!("Client sending message");
-    client.send(ClientMessage::Jump).unwrap();
+    client.send(ClientMessage::Start).unwrap();
     println!("Getting message from server");
     let server_message = client.receive().unwrap();
     dbg!(server_message);

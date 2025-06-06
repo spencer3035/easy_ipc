@@ -1,6 +1,8 @@
-
 use {
-    crate::packet::{Header, Packet},
+    crate::{
+        error::ConnectionError,
+        packet::{Header, Packet},
+    },
     interprocess::local_socket::Stream,
     serde::{Deserialize, Serialize},
     std::{
@@ -8,16 +10,6 @@ use {
         marker::PhantomData,
     },
 };
-
-/// Errors that can result from using a connection
-#[derive(Debug, PartialEq, Eq)]
-pub enum ConnectionError {
-    SerilizationFailed,
-    DeserilizationFailed,
-    WriteFailed,
-    ReadFailed,
-    UnexepctedEof,
-}
 
 /// Represents a connection that can send and receive messages
 // S[end] and R[eceive]
@@ -46,13 +38,13 @@ where
     /// Send a message to the other end of the connection.
     pub fn send(&mut self, message: S) -> Result<(), ConnectionError> {
         let bytes =
-            bitcode::serialize(&message).map_err(|_| ConnectionError::SerilizationFailed)?;
+            bitcode::serialize(&message).map_err(|e| ConnectionError::SerilizationFailed(e))?;
         let packet = Packet::new(bytes);
         let packet_bytes = packet.to_bytes();
         self.connection
             .get_mut()
             .write_all(&packet_bytes)
-            .map_err(|_| ConnectionError::WriteFailed)?;
+            .map_err(|e| ConnectionError::WriteFailed(e))?;
         Ok(())
     }
 
@@ -63,7 +55,7 @@ where
         let nread = self
             .connection
             .read(&mut header)
-            .map_err(|_| ConnectionError::ReadFailed)?;
+            .map_err(|e| ConnectionError::ReadFailed(e))?;
 
         if nread != Header::LENGTH {
             debug_assert_eq!(
@@ -74,18 +66,17 @@ where
             );
             return Err(ConnectionError::UnexepctedEof);
         }
-        let header =
-            Header::parse_header(&header).map_err(|_| ConnectionError::DeserilizationFailed)?;
+        let header = Header::parse_header(&header).map_err(|_| ConnectionError::HeaderMismatch)?;
         let len = header.length();
         let mut data = vec![0; len as usize];
         let nread = self
             .connection
             .read(&mut data)
-            .map_err(|_| ConnectionError::ReadFailed)?;
+            .map_err(|e| ConnectionError::ReadFailed(e))?;
         debug_assert_eq!(nread, len as usize, "Didn't read enough data");
         if nread != len as usize {
             return Err(ConnectionError::UnexepctedEof);
         }
-        bitcode::deserialize(&data).map_err(|_| ConnectionError::DeserilizationFailed)
+        bitcode::deserialize(&data).map_err(|e| ConnectionError::DeserilizationFailed(e))
     }
 }

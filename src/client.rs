@@ -1,15 +1,9 @@
-
 use {
-    crate::connection::{Connection, ConnectionError},
+    crate::{connection::Connection, error::ConnectionError},
     serde::{Deserialize, Serialize},
     std::marker::PhantomData,
 };
 
-/// Client errors
-#[derive(Debug, PartialEq, Eq)]
-pub enum ClientError {
-    FailedConnectingToSocket,
-}
 /// Client that is able to connect to a server and send/receive messages
 pub struct Client<T, R>
 where
@@ -27,7 +21,7 @@ where
     R: for<'de> Deserialize<'de>,
 {
     /// Create a new client given a connection
-    pub fn new(connection: Connection<T, R>) -> Self {
+    pub(crate) fn new(connection: Connection<T, R>) -> Self {
         Self {
             connection,
             _tx: PhantomData,
