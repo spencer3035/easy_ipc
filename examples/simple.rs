@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 /// Example Model
 struct MyModel;
 impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
-    fn socket_name() -> easy_ipc::model::Name {
-        socket_name!().unwrap()
+    fn socket_path() -> std::path::PathBuf {
+        socket_name!()
     }
 }
 
