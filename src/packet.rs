@@ -9,6 +9,12 @@ pub struct Header {
     len: u32,
 }
 
+// Some helpful env vars for the future
+// dbg!(env!("CARGO_PKG_VERSION"));
+// dbg!(env!("CARGO_PKG_VERSION_MAJOR"));
+// dbg!(env!("CARGO_PKG_VERSION_MINOR"));
+// dbg!(env!("CARGO_PKG_VERSION_PATCH"));
+// dbg!(env!("CARGO_PKG_VERSION_PRE"));
 impl Header {
     pub const LENGTH: usize = HEADER_MAGIC.len() + size_of::<u32>();
 

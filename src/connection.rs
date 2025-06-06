@@ -51,7 +51,6 @@ where
     /// Receive a message from the other end of the connection
     pub fn receive(&mut self) -> Result<R, ConnectionError> {
         let mut header: [u8; Header::LENGTH] = [0; Header::LENGTH];
-        println!("Reading header");
         let nread = self
             .connection
             .read(&mut header)

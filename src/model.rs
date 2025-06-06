@@ -48,9 +48,10 @@ fn default_socket_path() -> PathBuf {
 /// ```
 #[macro_export]
 macro_rules! socket_name {
-    () => {
-        easy_ipc::prelude::default_socket(&(env!("CARGO_CRATE_NAME").to_string() + ".socket"))
-    };
+    () => {{
+        let name = env!("CARGO_CRATE_NAME").to_string() + ".socket";
+        easy_ipc::prelude::default_socket(&name)
+    }};
 }
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and

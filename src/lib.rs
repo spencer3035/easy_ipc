@@ -47,3 +47,21 @@ pub mod prelude {
     pub use crate::model::default_socket;
     pub use crate::server::Server;
 }
+
+mod test {
+
+    /// Maybe something like
+    /// ```no_compile
+    /// #[derive(ClientServerModel)]
+    /// #[server_message(ServerMessage)]
+    /// #[client_message(ClientMessage)]
+    /// ```
+    #[allow(dead_code)]
+    pub struct Model;
+
+    #[allow(dead_code)]
+    fn tmp() {
+        // let client = Model::client();
+        // let server = Model::server();
+    }
+}
