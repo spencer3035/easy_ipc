@@ -57,12 +57,6 @@ where
             .map_err(|e| ConnectionError::ReadFailed(e))?;
 
         if nread != Header::LENGTH {
-            debug_assert_eq!(
-                nread,
-                Header::LENGTH,
-                "Couldn't read the header: {:?}",
-                header
-            );
             return Err(ConnectionError::UnexepctedEof);
         }
         let header = Header::parse_header(&header).map_err(|_| ConnectionError::HeaderMismatch)?;
