@@ -17,6 +17,7 @@ enum Op {
     Sub { a: i32, b: i32 },
     Div { a: i32, b: i32 },
     Mul { a: i32, b: i32 },
+    Stop,
 }
 
 // Define a transformation from our CLI internal struct to our client messages. Hypothetically you
@@ -28,6 +29,7 @@ impl From<Op> for ClientMessage {
             Op::Sub { a, b } => ClientMessage::Sub(a, b),
             Op::Mul { a, b } => ClientMessage::Mul(a, b),
             Op::Div { a, b } => ClientMessage::Div(a, b),
+            Op::Stop => ClientMessage::Stop,
         }
     }
 }

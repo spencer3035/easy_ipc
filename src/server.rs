@@ -15,15 +15,6 @@ where
     _tx: PhantomData<T>,
     _rx: PhantomData<R>,
 }
-impl<T, R> Drop for Server<T, R>
-where
-    T: Serialize,
-    R: for<'de> Deserialize<'de>,
-{
-    fn drop(&mut self) {
-        println!("Dropping server");
-    }
-}
 
 impl<T, R> Server<T, R>
 where
