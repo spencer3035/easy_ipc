@@ -1,10 +1,14 @@
 use serde::{Deserialize, Serialize};
 
-use easy_ipc::prelude::ClientServerModel;
+use easy_ipc::{prelude::ClientServerModel, socket_name};
 
 /// Example Model
 struct MyModel;
-impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {}
+impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
+    fn socket_name() -> easy_ipc::model::Name {
+        socket_name!().unwrap()
+    }
+}
 
 /// Example server messages
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

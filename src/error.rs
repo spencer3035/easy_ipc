@@ -1,4 +1,3 @@
-
 use std::fmt::Display;
 
 /// Errors that can result from using a connection

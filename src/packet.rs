@@ -1,4 +1,3 @@
-
 const HEADER_MAGIC: &[u8; 4] = b"heyo";
 
 #[derive(Debug, PartialEq, Eq)]

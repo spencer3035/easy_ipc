@@ -44,5 +44,6 @@ pub mod server;
 pub mod prelude {
     pub use crate::client::Client;
     pub use crate::model::ClientServerModel;
+    pub use crate::model::default_socket;
     pub use crate::server::Server;
 }
