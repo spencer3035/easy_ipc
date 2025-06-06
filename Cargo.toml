@@ -3,6 +3,9 @@ name = "easy_ipc"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = ["examples/full/app-cli", "examples/full/app-common", "examples/full/app-server"]
+
 [dependencies]
 interprocess = "2.2.3"
 users = "0.11.0"
@@ -10,3 +13,21 @@ bitcode = { version = "0.6.6", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 signal-hook = "0.3.18"
 libc = "0.2.172"
+
+[dev-dependencies]
+# For the examples
+app-common = { path = "examples/full/app-common" }
+clap = { version = "4.5.39", features = ["derive"] }
+
+[[example]]
+name = "app-common"
+path = "examples/full/app-common/src/lib.rs"
+crate-type = ["staticlib"]
+
+[[example]]
+name = "app-cli"
+path = "examples/full/app-cli/src/main.rs"
+
+[[example]]
+name = "app-server"
+path = "examples/full/app-server/src/main.rs"
