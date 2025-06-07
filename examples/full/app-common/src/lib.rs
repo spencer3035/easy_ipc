@@ -1,14 +1,13 @@
-use std::path::PathBuf;
-
 use easy_ipc::{prelude::*, socket_name};
 use serde::{Deserialize, Serialize};
 
 /// Define you model and implement [`ClientServerModel`] for it.
+#[derive(Debug, Copy, Clone)]
 pub struct MyModel;
 
-impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
-    fn socket_path() -> PathBuf {
-        socket_name!()
+impl Model<ClientMessage, ServerMessage> for MyModel {
+    fn model(self) -> ClientServerModel<ClientMessage, ServerMessage> {
+        ClientServerOptions::new(socket_name!()).create()
     }
 }
 

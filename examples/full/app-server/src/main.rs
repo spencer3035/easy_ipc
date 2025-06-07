@@ -4,7 +4,7 @@ use std::{
 };
 
 use app_common::{ClientMessage, MyModel, ServerMessage};
-use easy_ipc::{connection::Connection, model::ClientServerModel};
+use easy_ipc::{connection::Connection, model::Model};
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
 
@@ -12,6 +12,7 @@ static RUNNING: AtomicBool = AtomicBool::new(true);
 fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage>) {
     // Get a message from the client and print it out
     let msg = conn.receive().unwrap();
+    let model = MyModel.model();
     println!("Got: {:?}", msg);
 
     // Craft a response based on the message
@@ -28,12 +29,12 @@ fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage
         }
         ClientMessage::Stop => {
             RUNNING.store(false, Ordering::Relaxed);
-            spawn(|| {
+            spawn(move || {
                 // This dummy client makes the server go into the next iteration and check the
                 // running variable so that it exits immediately instead of waiting for the next
                 // client to send a message. We ignore errors because the server might have stopped
                 // already.
-                if let Ok(mut kill_client) = MyModel::client() {
+                if let Ok(mut kill_client) = model.client() {
                     let _ = kill_client.send(ClientMessage::Stop);
                 }
             });
@@ -48,7 +49,8 @@ fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage
 
 fn main() {
     // Create our server
-    let server = MyModel::server().unwrap();
+    let model = MyModel.model();
+    let server = model.server().unwrap();
     let mut threads = Vec::new();
 
     // Loop over all incoming connections

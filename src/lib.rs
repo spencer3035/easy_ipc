@@ -44,6 +44,8 @@ pub mod server;
 pub mod prelude {
     pub use crate::client::Client;
     pub use crate::model::ClientServerModel;
+    pub use crate::model::ClientServerOptions;
+    pub use crate::model::Model;
     pub use crate::model::default_socket;
     pub use crate::server::Server;
 }
@@ -63,8 +65,8 @@ mod test {
     /// #[server_message(ServerMessage)]
     /// #[client_message(ClientMessage)]
     /// ```
-    #[allow(dead_code)]
-    pub struct Model;
+    // #[allow(dead_code)]
+    // pub struct Model;
 
     #[test]
     fn basic_send_receive() {
@@ -78,16 +80,17 @@ mod test {
             Ping,
         }
 
-        struct Model;
-        impl ClientServerModel<ClientMessage, ServerMessage> for Model {
-            fn socket_path() -> std::path::PathBuf {
+        struct MyModel;
+        impl Model<ClientMessage, ServerMessage> for MyModel {
+            fn model(self) -> ClientServerModel<ClientMessage, ServerMessage> {
                 let socket_name = "basic_send_receive.sock";
-                default_socket(socket_name)
+                ClientServerOptions::new(default_socket(socket_name)).create()
             }
         }
 
-        let server = Model::server().unwrap();
-        assert!(matches!(Model::socket_path().try_exists(), Ok(true)));
+        let model = MyModel.model();
+        let server = model.server().unwrap();
+        assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
 
         let handle = spawn(move || {
             for conn in server.connections() {
@@ -98,7 +101,7 @@ mod test {
             }
         });
 
-        let mut client = Model::client().unwrap();
+        let mut client = model.client().unwrap();
         client.send(ClientMessage::Ping).unwrap();
         assert_eq!(ServerMessage::Pong, client.receive().unwrap());
 
@@ -106,7 +109,10 @@ mod test {
         handle.join().unwrap();
 
         // Now the socket shouldn't exist anymore
-        assert!(matches!(Model::socket_path().try_exists(), Ok(false)));
+        assert!(matches!(
+            model.options().socket_name.try_exists(),
+            Ok(false)
+        ));
 
         // Server is closed, should get errors when sending and receiving
         assert!(matches!(

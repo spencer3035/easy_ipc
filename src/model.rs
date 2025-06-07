@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
-use crate::packet::{IpcMagicBytes, MagicBytes};
+use crate::packet::IpcMagicBytes;
 use signal_hook::{consts::*, iterator::Signals};
 
 use {
@@ -62,83 +62,131 @@ macro_rules! socket_name {
 static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 static HANDLERS_SET: AtomicBool = AtomicBool::new(false);
 
-pub struct Opts<C, S>
+pub struct ClientServerOptions<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
 {
-    socket_name: String,
-    magic_bytes: &'static [u8],
-    handlers: fn(),
+    pub(crate) socket_name: PathBuf,
+    pub(crate) magic_bytes: &'static [u8],
+    pub(crate) handler: fn(&ClientServerModel<C, S>),
     _client: PhantomData<C>,
     _server: PhantomData<S>,
 }
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
 /// server messages are denoted by the generic `S`.
-impl<C, S> Opts<C, S>
+impl<C, S> ClientServerOptions<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
 {
-    /// Creates a model in the given namespace with the default options. Namespace needs to be a
-    /// valid [`std::ffi::OsStr`].
-    pub fn new(namespace: String) -> Self {
+    /// Creates a model in the given namespace with the default options.
+    ///
+    /// Currently the namespace is equivalent to the name of the socket. See [`socket_name`] and
+    /// [`default_socket`] for easy methods of creating a socket name.
+    pub fn new<P>(namespace: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
         Self {
-            socket_name: namespace,
+            socket_name: namespace.as_ref().to_path_buf(),
             magic_bytes: b"4242",
-            handlers: || {},
+            handler: |model| {
+                setup_handlers(model);
+            },
             _client: PhantomData,
             _server: PhantomData,
         }
     }
 
-    // pub fn socket_path(mut self, socket_name: String) -> Self {
-    //     self.socket_name = socket_name;
-    //     self
-    // }
-
-    pub fn handlers(mut self, hook: fn()) -> Self {
-        self.handlers = hook;
+    /// NOT RECOMMENDED: Set the magic bytes used in the packets to validate client and server
+    /// methods.
+    ///
+    /// Changing this value will break compatibility for previous versions of your program. Both
+    /// the client and the server need to agree on this value for messages to be passed back and
+    /// forth.
+    pub fn magic_bytes(mut self, magic_bytes: &'static [u8]) -> Self {
+        self.magic_bytes = magic_bytes;
         self
+    }
+
+    /// NOT RECOMMENDED: Overwrite the default handling of panics and OS termination signals.
+    ///
+    /// The default implementation ensures there are no hiccups with starting new servers due to
+    /// files getting left lying around. If you choose to overwrite this method you accept you will
+    /// either need to do this yourself or deal with the issues associated with not doing it. In
+    /// general, we assume in this library that you use the default implementation.
+    ///
+    /// The function passed into this gets called a maximum of one time if
+    /// [`ClientServerModel::server`] is called.
+    ///
+    /// By default, we set up panic and signal handlers to automatically delete the socket file
+    /// generated at the namespace set in [`ClientServerOptions`] so that when the program exists with Ctrl-c or a
+    /// termination signal there are no issues with creating another server.
+    ///
+    /// It is recommended you look at or use [`cleanup`] and also understand how this library works
+    /// under the hood before calling this method.
+    pub fn handlers(mut self, hook: fn(&ClientServerModel<C, S>)) -> Self {
+        self.handler = hook;
+        self
+    }
+
+    // Create a new client-server model with the given options
+    pub fn create(self) -> ClientServerModel<C, S> {
+        ClientServerModel::new(self)
+    }
+}
+
+pub trait Model<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    /// Generate a client/server model. See [`ClientServerOptions`]
+    fn model(self) -> ClientServerModel<C, S>;
+}
+
+impl<C, S> Model<C, S> for ClientServerOptions<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    fn model(self) -> ClientServerModel<C, S> {
+        self.create()
     }
 }
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
 /// server messages are denoted by the generic `S`.
-pub trait ClientServerModel<C, S, M = IpcMagicBytes>
+pub struct ClientServerModel<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
-    M: MagicBytes,
 {
-    /// The location that the socket will be stored. Can be overwriten if the default location is
-    /// not desired. See [`socket_name`] and [`default_socket`] for easy method of creating a
-    /// socket name.
-    fn socket_path() -> PathBuf;
+    options: ClientServerOptions<C, S>,
+    _client: PhantomData<C>,
+    _server: PhantomData<S>,
+}
 
-    /// Do not manually call this method.
-    ///
-    /// Sets up panic and signal handlers to automatically delete the socket file generated at
-    /// [`ClientServerModel::socket_path`] when the program exists. This gets run when creating the
-    /// first server via the [`ClientServerModel::server`] associated method.
-    ///
-    /// If you want to set up these handles yourself, you can overwrite this method to be empty.
-    /// It is then your responsibilty to delete the socket file (or ensure the Server struct is
-    /// dropped before the program exits).
-    fn register_handlers() {
-        // Protect against users calling this method
-        let handle_lock = HANDLERS_SET.fetch_or(true, std::sync::atomic::Ordering::Relaxed);
-        if handle_lock {
-            return;
+/// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
+/// server messages are denoted by the generic `S`.
+impl<C, S> ClientServerModel<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    pub(crate) fn new(options: ClientServerOptions<C, S>) -> Self {
+        ClientServerModel {
+            options,
+            _client: PhantomData,
+            _server: PhantomData,
         }
-        setup_handlers(Self::socket_path());
     }
-
     /// Make a new client, errors if unable to connect to server. Multiple clients can exist across
     /// threads and processes.
-    fn client() -> Result<Client<C, S, M>, InitError> {
-        let name = pathbuf_to_interprocess_name(Self::socket_path())?;
+    pub fn client(&self) -> Result<Client<C, S, IpcMagicBytes>, InitError> {
+        let name = pathbuf_to_interprocess_name(&self.options.socket_name)?;
         let stream = Stream::connect(name).map_err(|e| InitError::FailedConnectingToSocket(e))?;
         let conn = Connection::new(stream);
         Ok(Client::new(conn))
@@ -149,17 +197,34 @@ where
     /// Needs to be created before clients. Only one server can exist at a time.
     ///
     /// Returns various kinds of errors that could happend when trying to init a new server.
-    fn server() -> Result<Server<S, C, M>, InitError> {
-        let name = pathbuf_to_interprocess_name(Self::socket_path())?;
+    pub fn server(&self) -> Result<Server<S, C, IpcMagicBytes>, InitError> {
+        let name = pathbuf_to_interprocess_name(&self.options.socket_name)?;
         let opts = ListenerOptions::new().name(name);
-        Self::server_with_opts(opts)
+        self.server_with_opts(opts)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn options(&self) -> &ClientServerOptions<C, S> {
+        &self.options
+    }
+
+    fn register_handlers(&self) {
+        // Protect against users calling this method
+        let handle_lock = HANDLERS_SET.fetch_or(true, std::sync::atomic::Ordering::Relaxed);
+        if handle_lock {
+            return;
+        }
+        (self.options.handler)(&self);
     }
 
     /// Create a server given options.
     ///
     /// See: [`ClientServerModel::server`]
-    fn server_with_opts(opts: ListenerOptions) -> Result<Server<S, C, M>, InitError> {
-        let name = pathbuf_to_interprocess_name(Self::socket_path())?;
+    fn server_with_opts(
+        &self,
+        opts: ListenerOptions,
+    ) -> Result<Server<S, C, IpcMagicBytes>, InitError> {
+        let name = pathbuf_to_interprocess_name(&self.options.socket_name)?;
         let opts = opts.name(name);
         // Can fail for IO reasons
         let listener = opts.create_sync().map_err(|e| match e {
@@ -175,14 +240,19 @@ where
         // We need to setup handlers after creating the listener to avoid killing a running
         // server's socket. We also need to setup handlers after we have gaurenteed that a server
         // hasn't already been spawned to ensure we don't try to setup two instances of handlers.
-        Self::register_handlers();
+        self.register_handlers();
         Ok(Server::new(listener))
     }
 }
 
 /// Converts [`PathBuf`] to [`Name`] using consistent method
-fn pathbuf_to_interprocess_name(path: PathBuf) -> Result<Name<'static>, InitError> {
-    path.to_fs_name::<GenericFilePath>()
+fn pathbuf_to_interprocess_name<'a, P>(path: P) -> Result<Name<'a>, InitError>
+where
+    P: AsRef<Path> + 'a,
+{
+    path.as_ref()
+        .to_owned()
+        .to_fs_name::<GenericFilePath>()
         .map_err(|e| InitError::FailedConnectingToSocket(e))
 }
 
@@ -203,7 +273,9 @@ where
     }
 }
 
-/// Tries to clean up socket file and prints errors if it fails.
+/// Tries to clean up a given file and prints errors if it fails.
+///
+/// Meant to be used in handling panics and signals sent to kill the program.
 pub fn cleanup<P>(path: P)
 where
     P: AsRef<Path>,
@@ -212,8 +284,8 @@ where
         // Should be the usual case, program was exited while server was running, so we need to
         // clean up the socket
         Ok(true) => (),
-        // Less common, the socket didn't exist so something bad might have happened before the
-        // server was created.
+        // Less common, the either the server was dropped or something bad might have happened
+        // before the server was created.
         Ok(false) => (),
         // Bad, we failed deleting the socket file, this might lead to a zombie socket file or it
         // could be because of bad permissions
@@ -229,7 +301,7 @@ fn handle_os_signals<P>(path: P) -> Result<(), std::io::Error>
 where
     P: AsRef<Path>,
 {
-    // What signals do we want to handle?
+    // Handle all term signals
     let mut signals = Signals::new(TERM_SIGNALS)?;
     for sig in signals.forever() {
         cleanup(path);
@@ -245,23 +317,27 @@ where
 
 /// Sets up handlers to try and delete a given path upon panic and signals that ask to terminate
 /// the process.
-fn setup_handlers<P>(path: P)
+fn setup_handlers<C, S>(model: &ClientServerModel<C, S>)
 where
-    P: AsRef<Path>,
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
 {
+    let path = &model.options.socket_name;
+
     // Handle panics, we do this first because the handling of OS errors thread might panic
     let default_panic_hook = std::panic::take_hook();
-    let path_clone = path.as_ref().to_path_buf();
+    let path_clone = path.clone();
     std::panic::set_hook(Box::new(move |info| {
         cleanup(&path_clone);
         default_panic_hook(info)
     }));
 
     // Handle signals from the OS
-    let path_clone = path.as_ref().to_path_buf();
+    let path_clone = path.clone();
     std::thread::spawn(move || {
         if let Err(e) = handle_os_signals(&path_clone) {
             panic!("Failed setting up signal handlers: {e}");
         }
+        panic!("Stopped handling signals.");
     });
 }

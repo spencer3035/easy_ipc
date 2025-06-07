@@ -6,14 +6,14 @@
 //! and your structure that implements [`ClientServerModel`]. You can see a more normal
 //! implementation at [../examples/full/].
 
-use easy_ipc::{prelude::ClientServerModel, socket_name};
+use easy_ipc::{prelude::*, socket_name};
 use serde::{Deserialize, Serialize};
 
 /// Example Model
 struct MyModel;
-impl ClientServerModel<ClientMessage, ServerMessage> for MyModel {
-    fn socket_path() -> std::path::PathBuf {
-        socket_name!()
+impl Model<ClientMessage, ServerMessage> for MyModel {
+    fn model(self) -> ClientServerModel<ClientMessage, ServerMessage> {
+        ClientServerOptions::new(socket_name!()).create()
     }
 }
 
@@ -32,10 +32,11 @@ enum ClientMessage {
 }
 
 fn main() {
+    let model = MyModel.model();
     // Make new server (needs to be before client)
-    let server = MyModel::server().unwrap();
+    let server = model.server().unwrap();
     // Make a new client
-    let mut client = MyModel::client().unwrap();
+    let mut client = model.client().unwrap();
 
     // Spawn server in new thread (Normally this would be another process)
     let handle = std::thread::spawn(move || {
