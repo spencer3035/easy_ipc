@@ -11,8 +11,11 @@ use serde::{Deserialize, Serialize};
 
 /// Example Model
 struct MyModel;
-impl Model<ClientMessage, ServerMessage> for MyModel {
-    fn model(self) -> ClientServerModel<ClientMessage, ServerMessage> {
+impl Model for MyModel {
+    type ServerMsg = ServerMessage;
+    type ClientMsg = ClientMessage;
+
+    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
         ClientServerOptions::new(socket_name!()).create()
     }
 }

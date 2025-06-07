@@ -81,8 +81,11 @@ mod test {
         }
 
         struct MyModel;
-        impl Model<ClientMessage, ServerMessage> for MyModel {
-            fn model(self) -> ClientServerModel<ClientMessage, ServerMessage> {
+        impl Model for MyModel {
+            type ServerMsg = ServerMessage;
+            type ClientMsg = ClientMessage;
+
+            fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
                 let socket_name = "basic_send_receive.sock";
                 ClientServerOptions::new(default_socket(socket_name)).create()
             }

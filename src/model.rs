@@ -138,27 +138,36 @@ where
     }
 }
 
-pub trait Model<C, S>
-where
-    C: Serialize + for<'de> Deserialize<'de>,
-    S: Serialize + for<'de> Deserialize<'de>,
-{
+pub trait Model {
+    type ClientMsg: Serialize + for<'de> Deserialize<'de>;
+    type ServerMsg: Serialize + for<'de> Deserialize<'de>;
+
     /// Generate a client/server model. See [`ClientServerOptions`]
-    fn model(self) -> ClientServerModel<C, S>;
+    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
+
+    fn client(self) -> Client<Self::ClientMsg, Self::ServerMsg> {
+        self.model().client()
+    }
 }
 
-impl<C, S> Model<C, S> for ClientServerOptions<C, S>
+impl<C, S> Model for ClientServerOptions<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
 {
-    fn model(self) -> ClientServerModel<C, S> {
+    type ClientMsg = C;
+    type ServerMsg = S;
+
+    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
         self.create()
     }
 }
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
 /// server messages are denoted by the generic `S`.
+///
+/// The primary way to generate this is to use [`ClientServerOptions`] or a struct that implements
+/// [`Model`].
 pub struct ClientServerModel<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,

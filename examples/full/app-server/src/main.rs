@@ -12,7 +12,6 @@ static RUNNING: AtomicBool = AtomicBool::new(true);
 fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage>) {
     // Get a message from the client and print it out
     let msg = conn.receive().unwrap();
-    let model = MyModel.model();
     println!("Got: {:?}", msg);
 
     // Craft a response based on the message
@@ -34,7 +33,7 @@ fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage
                 // running variable so that it exits immediately instead of waiting for the next
                 // client to send a message. We ignore errors because the server might have stopped
                 // already.
-                if let Ok(mut kill_client) = model.client() {
+                if let Ok(mut kill_client) = MyModel.model().client() {
                     let _ = kill_client.send(ClientMessage::Stop);
                 }
             });
