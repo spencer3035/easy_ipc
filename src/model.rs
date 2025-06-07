@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicBool;
+use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 use crate::packet::{IpcMagicBytes, MagicBytes};
 use signal_hook::{consts::*, iterator::Signals};
@@ -61,6 +61,48 @@ macro_rules! socket_name {
 
 static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 static HANDLERS_SET: AtomicBool = AtomicBool::new(false);
+
+pub struct Opts<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    socket_name: String,
+    magic_bytes: &'static [u8],
+    handlers: fn(),
+    _client: PhantomData<C>,
+    _server: PhantomData<S>,
+}
+
+/// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
+/// server messages are denoted by the generic `S`.
+impl<C, S> Opts<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    /// Creates a model in the given namespace with the default options. Namespace needs to be a
+    /// valid [`std::ffi::OsStr`].
+    pub fn new(namespace: String) -> Self {
+        Self {
+            socket_name: namespace,
+            magic_bytes: b"4242",
+            handlers: || {},
+            _client: PhantomData,
+            _server: PhantomData,
+        }
+    }
+
+    // pub fn socket_path(mut self, socket_name: String) -> Self {
+    //     self.socket_name = socket_name;
+    //     self
+    // }
+
+    pub fn handlers(mut self, hook: fn()) -> Self {
+        self.handlers = hook;
+        self
+    }
+}
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
 /// server messages are denoted by the generic `S`.
