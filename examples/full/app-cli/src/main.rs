@@ -39,9 +39,8 @@ fn main() {
     let args = Cli::parse();
     // Convert args to a message
     let msg: ClientMessage = args.op.into();
-    let model = MyModel.model();
     // Make our client
-    let mut client = model.client().unwrap();
+    let mut client = MyModel.client().unwrap();
     // Send the message to the server
     client.send(msg.clone()).unwrap();
     // Get the response and print it out

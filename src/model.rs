@@ -1,10 +1,9 @@
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
-use crate::packet::IpcMagicBytes;
 use signal_hook::{consts::*, iterator::Signals};
 
 use {
-    crate::{client::Client, connection::Connection, error::InitError, server::Server},
+    crate::{client::Client, error::InitError, server::Server},
     interprocess::local_socket::{GenericFilePath, ListenerOptions, Name, Stream, prelude::*},
     serde::{Deserialize, Serialize},
     std::path::{Path, PathBuf},
@@ -60,18 +59,33 @@ macro_rules! socket_name {
 }
 
 static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
-static HANDLERS_SET: AtomicBool = AtomicBool::new(false);
 
 pub struct ClientServerOptions<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
 {
-    pub(crate) socket_name: PathBuf,
-    pub(crate) magic_bytes: &'static [u8],
+    pub(crate) options_inner: OptionsRaw,
     pub(crate) handler: fn(&ClientServerModel<C, S>),
     _client: PhantomData<C>,
     _server: PhantomData<S>,
+}
+
+pub(crate) struct OptionsRaw {
+    pub(crate) socket_name: PathBuf,
+    pub(crate) magic_bytes: &'static [u8],
+}
+
+impl OptionsRaw {
+    fn new<P>(namespace: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        Self {
+            socket_name: namespace.as_ref().to_path_buf(),
+            magic_bytes: b"4242",
+        }
+    }
 }
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
@@ -89,9 +103,9 @@ where
     where
         P: AsRef<Path>,
     {
+        let options_inner = OptionsRaw::new(namespace);
         Self {
-            socket_name: namespace.as_ref().to_path_buf(),
-            magic_bytes: b"4242",
+            options_inner,
             handler: |model| {
                 setup_handlers(model);
             },
@@ -107,7 +121,7 @@ where
     /// the client and the server need to agree on this value for messages to be passed back and
     /// forth.
     pub fn magic_bytes(mut self, magic_bytes: &'static [u8]) -> Self {
-        self.magic_bytes = magic_bytes;
+        self.options_inner.magic_bytes = magic_bytes;
         self
     }
 
@@ -142,24 +156,26 @@ pub trait Model {
     type ClientMsg: Serialize + for<'de> Deserialize<'de>;
     type ServerMsg: Serialize + for<'de> Deserialize<'de>;
 
-    /// Generate a client/server model. See [`ClientServerOptions`]
+    /// Generate a client/server model. See [`ClientServerOptions`] on how to create a new model.
     fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
 
-    fn client(self) -> Client<Self::ClientMsg, Self::ServerMsg> {
+    /// Make a new client, errors if unable to connect to server. Multiple clients can exist at the
+    /// same time.
+    fn client(self) -> Result<Client<Self::ClientMsg, Self::ServerMsg>, InitError>
+    where
+        Self: Sized,
+    {
         self.model().client()
     }
-}
 
-impl<C, S> Model for ClientServerOptions<C, S>
-where
-    C: Serialize + for<'de> Deserialize<'de>,
-    S: Serialize + for<'de> Deserialize<'de>,
-{
-    type ClientMsg = C;
-    type ServerMsg = S;
-
-    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-        self.create()
+    /// Try to create a new server instance.
+    ///
+    /// Needs to be created before clients. Only one server can exist at a time on a given host.
+    fn server(self) -> Result<Server<Self::ServerMsg, Self::ClientMsg>, InitError>
+    where
+        Self: Sized,
+    {
+        self.model().server()
     }
 }
 
@@ -180,12 +196,15 @@ where
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
 /// server messages are denoted by the generic `S`.
+///
+/// This should not be interacted with directly, you should instead use [`Model::client`] and
+/// [`Model::server`] to create model and server instances.
 impl<C, S> ClientServerModel<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
 {
-    pub(crate) fn new(options: ClientServerOptions<C, S>) -> Self {
+    fn new(options: ClientServerOptions<C, S>) -> Self {
         ClientServerModel {
             options,
             _client: PhantomData,
@@ -194,11 +213,10 @@ where
     }
     /// Make a new client, errors if unable to connect to server. Multiple clients can exist across
     /// threads and processes.
-    pub fn client(&self) -> Result<Client<C, S, IpcMagicBytes>, InitError> {
-        let name = pathbuf_to_interprocess_name(&self.options.socket_name)?;
+    fn client(self) -> Result<Client<C, S>, InitError> {
+        let name = pathbuf_to_interprocess_name(&self.options.options_inner.socket_name)?;
         let stream = Stream::connect(name).map_err(|e| InitError::FailedConnectingToSocket(e))?;
-        let conn = Connection::new(stream);
-        Ok(Client::new(conn))
+        Ok(Client::new(self.options.options_inner, stream))
     }
 
     /// Try to create a new server instance.
@@ -206,34 +224,22 @@ where
     /// Needs to be created before clients. Only one server can exist at a time.
     ///
     /// Returns various kinds of errors that could happend when trying to init a new server.
-    pub fn server(&self) -> Result<Server<S, C, IpcMagicBytes>, InitError> {
-        let name = pathbuf_to_interprocess_name(&self.options.socket_name)?;
-        let opts = ListenerOptions::new().name(name);
+    fn server(self) -> Result<Server<S, C>, InitError> {
+        let opts = ListenerOptions::new();
         self.server_with_opts(opts)
     }
 
+    /// Get a reference to the internal options
     #[cfg(test)]
-    pub(crate) fn options(&self) -> &ClientServerOptions<C, S> {
-        &self.options
-    }
-
-    fn register_handlers(&self) {
-        // Protect against users calling this method
-        let handle_lock = HANDLERS_SET.fetch_or(true, std::sync::atomic::Ordering::Relaxed);
-        if handle_lock {
-            return;
-        }
-        (self.options.handler)(&self);
+    pub(crate) fn options(&self) -> &OptionsRaw {
+        &self.options.options_inner
     }
 
     /// Create a server given options.
     ///
     /// See: [`ClientServerModel::server`]
-    fn server_with_opts(
-        &self,
-        opts: ListenerOptions,
-    ) -> Result<Server<S, C, IpcMagicBytes>, InitError> {
-        let name = pathbuf_to_interprocess_name(&self.options.socket_name)?;
+    fn server_with_opts(self, opts: ListenerOptions) -> Result<Server<S, C>, InitError> {
+        let name = pathbuf_to_interprocess_name(&self.options.options_inner.socket_name)?;
         let opts = opts.name(name);
         // Can fail for IO reasons
         let listener = opts.create_sync().map_err(|e| match e {
@@ -249,8 +255,8 @@ where
         // We need to setup handlers after creating the listener to avoid killing a running
         // server's socket. We also need to setup handlers after we have gaurenteed that a server
         // hasn't already been spawned to ensure we don't try to setup two instances of handlers.
-        self.register_handlers();
-        Ok(Server::new(listener))
+        (self.options.handler)(&self);
+        Ok(Server::new(listener, self.options.options_inner))
     }
 }
 
@@ -331,7 +337,7 @@ where
     C: Serialize + for<'de> Deserialize<'de>,
     S: Serialize + for<'de> Deserialize<'de>,
 {
-    let path = &model.options.socket_name;
+    let path = &model.options.options_inner.socket_name;
 
     // Handle panics, we do this first because the handling of OS errors thread might panic
     let default_panic_hook = std::panic::take_hook();

@@ -92,7 +92,8 @@ mod test {
         }
 
         let model = MyModel.model();
-        let server = model.server().unwrap();
+
+        let server = MyModel.server().unwrap();
         assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
 
         let handle = spawn(move || {
@@ -104,7 +105,7 @@ mod test {
             }
         });
 
-        let mut client = model.client().unwrap();
+        let mut client = MyModel.client().unwrap();
         client.send(ClientMessage::Ping).unwrap();
         assert_eq!(ServerMessage::Pong, client.receive().unwrap());
 

@@ -10,7 +10,9 @@ use easy_ipc::{prelude::*, socket_name};
 use serde::{Deserialize, Serialize};
 
 /// Example Model
+#[derive(Debug, Copy, Clone)]
 struct MyModel;
+
 impl Model for MyModel {
     type ServerMsg = ServerMessage;
     type ClientMsg = ClientMessage;
@@ -35,11 +37,10 @@ enum ClientMessage {
 }
 
 fn main() {
-    let model = MyModel.model();
     // Make new server (needs to be before client)
-    let server = model.server().unwrap();
+    let server = MyModel.server().unwrap();
     // Make a new client
-    let mut client = model.client().unwrap();
+    let mut client = MyModel.client().unwrap();
 
     // Spawn server in new thread (Normally this would be another process)
     let handle = std::thread::spawn(move || {

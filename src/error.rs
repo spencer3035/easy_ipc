@@ -4,7 +4,11 @@ use std::fmt::Display;
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum ConnectionError {
+    /// Header magic bytes did not match or there were not enough bytes to for
     HeaderMismatch,
+    /// Packet was larger that `usize` bytes, this may be due to a malformed header.
+    PacketTooLarge,
+    /// Not enough bytes to read the packet
     UnexepctedEof,
     SerilizationFailed(bitcode::Error),
     DeserilizationFailed(bitcode::Error),

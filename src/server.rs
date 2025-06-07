@@ -1,44 +1,41 @@
 use {
-    crate::{connection::Connection, error::ConnectionError, packet::MagicBytes},
+    crate::{connection::Connection, error::ConnectionError, model::OptionsRaw},
     interprocess::local_socket::prelude::*,
     serde::{Deserialize, Serialize},
-    std::marker::PhantomData,
+    std::{marker::PhantomData, sync::Arc},
 };
 
 /// A instance of a server
-pub struct Server<T, R, M>
+pub struct Server<T, R>
 where
     T: Serialize,
     R: for<'de> Deserialize<'de>,
-    M: MagicBytes,
 {
     listener: LocalSocketListener,
+    opts: Arc<OptionsRaw>,
     _tx: PhantomData<T>,
     _rx: PhantomData<R>,
-    _magic: PhantomData<M>,
 }
 
-impl<T, R, M> Server<T, R, M>
+impl<T, R> Server<T, R>
 where
     T: Serialize,
     R: for<'de> Deserialize<'de>,
-    M: MagicBytes,
 {
     /// Get a new Server listening on a socket
-    pub(crate) fn new(listener: LocalSocketListener) -> Self {
+    pub(crate) fn new(listener: LocalSocketListener, opts: OptionsRaw) -> Self {
+        let opts = Arc::new(opts);
         Self {
             listener,
+            opts,
             _tx: PhantomData,
             _rx: PhantomData,
-            _magic: PhantomData,
         }
     }
     /// Create an iterator over all connections
-    pub fn connections(
-        &self,
-    ) -> impl Iterator<Item = Result<Connection<T, R, M>, ConnectionError>> {
+    pub fn connections(&self) -> impl Iterator<Item = Result<Connection<T, R>, ConnectionError>> {
         self.listener.incoming().map(|conn| {
-            conn.map(Connection::new)
+            conn.map(|c| Connection::new(c, self.opts.clone()))
                 .map_err(|e| ConnectionError::IoError(e))
         })
     }
