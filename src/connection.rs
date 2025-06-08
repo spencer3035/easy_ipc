@@ -11,6 +11,7 @@ use {
 
 /// Represents a connection that can send and receive messages
 // S[end] and R[eceive]
+#[derive(Debug)]
 pub struct Connection<T, R>
 where
     T: Serialize,

@@ -1,19 +1,19 @@
-use std::thread::spawn;
+use std::thread::{sleep, spawn};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::ConnectionError;
+use crate::error::{ConnectionError, InitError};
 use crate::model::cleanup;
 use crate::prelude::*;
 
-/// Maybe something like
+/// TODO: Add a derive for something like
 /// ```no_compile
 /// #[derive(ClientServerModel)]
 /// #[server_message(ServerMessage)]
 /// #[client_message(ClientMessage)]
+/// pub struct Model;
 /// ```
-// #[allow(dead_code)]
-// pub struct Model;
 
 macro_rules! define_model {
     (
@@ -36,7 +36,6 @@ macro_rules! define_model {
 
         fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
             let socket_name = $socket_name;
-            println!("Starting {}", socket_name);
             ClientServerOptions::new(default_socket(socket_name))
                 .handlers(|_model| {})
                 .create()
@@ -46,9 +45,79 @@ macro_rules! define_model {
 }
 
 #[test]
-fn basic_macro_test() {
+fn basic_multi_client() {
     define_model!(
-        BasicModel: "basic_macro_test.socket",
+        BasicModel: "basic_multi_client.socket",
+        ServerMessage {
+            Pong,
+        },
+        ClientMessage {
+            Ping,
+        },
+    );
+
+    let model = BasicModel.model();
+    cleanup(&model.options().socket_name);
+    let server = BasicModel.server().unwrap();
+
+    let mut handles = Vec::new();
+    let num_conn = 10;
+
+    let handle = spawn(move || {
+        let mut count = 0;
+        for mut conn in server.connections().map(|c| c.unwrap()) {
+            count += 1;
+            assert_eq!(conn.receive().unwrap(), ClientMessage::Ping);
+            conn.send(ServerMessage::Pong).unwrap();
+            // Break after reaching the correct number of connections
+            if count >= num_conn {
+                break;
+            }
+        }
+    });
+    handles.push(handle);
+
+    for _ii in 0..num_conn {
+        let mut client = BasicModel.client().unwrap();
+        let handle = spawn(move || {
+            client.send(ClientMessage::Ping).unwrap();
+            assert_eq!(client.receive().unwrap(), ServerMessage::Pong);
+            sleep(Duration::from_millis(50));
+        });
+
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+}
+
+#[test]
+fn basic_multi_server() {
+    define_model!(
+        BasicModel: "basic_multi_server.socket",
+        ServerMessage {
+            Pong,
+        },
+        ClientMessage {
+            Ping,
+        },
+    );
+
+    let model = BasicModel.model();
+    cleanup(&model.options().socket_name);
+    let _server = BasicModel.server().unwrap();
+    assert!(matches!(
+        BasicModel.server().unwrap_err(),
+        InitError::SocketAlreadyExists,
+    ));
+}
+
+#[test]
+fn basic_send_receive() {
+    define_model!(
+        BasicModel: "basic_send_receive.socket",
         ServerMessage {
             Pong,
         },
@@ -73,70 +142,6 @@ fn basic_macro_test() {
     });
 
     let mut client = BasicModel.client().unwrap();
-    client.send(ClientMessage::Ping).unwrap();
-    assert_eq!(ServerMessage::Pong, client.receive().unwrap());
-
-    // This makes sure the server is dropped
-    handle.join().unwrap();
-
-    // Now the socket shouldn't exist anymore
-    assert!(matches!(
-        model.options().socket_name.try_exists(),
-        Ok(false)
-    ));
-
-    // Server is closed, should get errors when sending and receiving
-    assert!(matches!(
-        client.send(ClientMessage::Ping).unwrap_err(),
-        ConnectionError::WriteFailed(_)
-    ));
-    assert!(matches!(
-        client.receive().unwrap_err(),
-        ConnectionError::UnexepctedEof
-    ));
-}
-
-#[test]
-fn basic_send_receive() {
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-    enum ServerMessage {
-        Pong,
-    }
-
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-    enum ClientMessage {
-        Ping,
-    }
-
-    struct MyModel;
-    impl Model for MyModel {
-        type ServerMsg = ServerMessage;
-        type ClientMsg = ClientMessage;
-
-        fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-            let socket_name = "basic_send_receive.sock";
-            ClientServerOptions::new(default_socket(socket_name))
-                .handlers(|_model| {})
-                .create()
-        }
-    }
-
-    let model = MyModel.model();
-    cleanup(&model.options().socket_name);
-
-    let server = MyModel.server().unwrap();
-    assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
-
-    let handle = spawn(move || {
-        for conn in server.connections() {
-            let mut conn = conn.unwrap();
-            assert_eq!(ClientMessage::Ping, conn.receive().unwrap());
-            conn.send(ServerMessage::Pong).unwrap();
-            break;
-        }
-    });
-
-    let mut client = MyModel.client().unwrap();
     client.send(ClientMessage::Ping).unwrap();
     assert_eq!(ServerMessage::Pong, client.receive().unwrap());
 

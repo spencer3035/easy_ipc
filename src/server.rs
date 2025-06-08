@@ -6,6 +6,7 @@ use {
 };
 
 /// A instance of a server
+#[derive(Debug)]
 pub struct Server<T, R>
 where
     T: Serialize,

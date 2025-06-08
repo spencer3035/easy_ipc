@@ -71,6 +71,7 @@ where
     _server: PhantomData<S>,
 }
 
+#[derive(Debug)]
 pub(crate) struct OptionsRaw {
     pub(crate) socket_name: PathBuf,
     pub(crate) magic_bytes: &'static [u8],

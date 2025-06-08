@@ -6,6 +6,7 @@ use {
 };
 
 /// Client that is able to connect to a server and send/receive messages
+#[derive(Debug)]
 pub struct Client<T, R>
 where
     T: Serialize + for<'de> Deserialize<'de>,
