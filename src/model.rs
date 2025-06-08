@@ -249,7 +249,11 @@ where
         })?;
         // Gaurentee that there is only one server running in the current process.
         let server_lock = SERVER_RUNNING.fetch_or(true, std::sync::atomic::Ordering::Relaxed);
+        // TODO: This prevents two servers from running, even if they are on different sockets,
+        // this is probably not desired, maybe we could have an option to disable this check?
         if server_lock {
+            // Skip for testing so we can test lots of servers
+            #[cfg(not(test))]
             return Err(InitError::ServerAlreadyRunning);
         }
         // We need to setup handlers after creating the listener to avoid killing a running
