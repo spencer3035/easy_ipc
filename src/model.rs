@@ -54,7 +54,7 @@ fn default_socket_path() -> PathBuf {
 macro_rules! socket_name {
     () => {{
         let name = env!("CARGO_CRATE_NAME").to_string() + ".socket";
-        ::easy_ipc::prelude::default_socket(&name)
+        $crate::prelude::default_socket(&name)
     }};
 }
 

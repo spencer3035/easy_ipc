@@ -3,6 +3,7 @@ use std::thread::spawn;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ConnectionError;
+use crate::model::cleanup;
 use crate::prelude::*;
 
 /// Maybe something like
@@ -17,16 +18,16 @@ use crate::prelude::*;
 macro_rules! define_model {
     (
     $model_name:ident : $socket_name:literal,
-    $server_enum:ident {$($s_msg:ident),*},
-    $client_enum:ident {$($c_msg:ident),*},
+    $server_enum:ident {$($s_msg:ident),* $(,)+},
+    $client_enum:ident {$($c_msg:ident),* $(,)+},
 ) => {
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
     enum $server_enum {
-        $($s_msg)*,
+        $($s_msg),*
     }
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
     enum $client_enum {
-        $($c_msg)*,
+        $($c_msg),*
     }
     struct $model_name;
     impl Model for $model_name {
@@ -49,15 +50,16 @@ fn basic_macro_test() {
     define_model!(
         BasicModel: "basic_macro_test.socket",
         ServerMessage {
-            Pong
+            Pong,
         },
         ClientMessage {
-            Ping
+            Ping,
         },
     );
 
     let model = BasicModel.model();
-    crate::model::cleanup(&model.options().socket_name);
+    cleanup(&model.options().socket_name);
+
     let server = BasicModel.server().unwrap();
     assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
 
@@ -120,7 +122,7 @@ fn basic_send_receive() {
     }
 
     let model = MyModel.model();
-    crate::model::cleanup(&model.options().socket_name);
+    cleanup(&model.options().socket_name);
 
     let server = MyModel.server().unwrap();
     assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
