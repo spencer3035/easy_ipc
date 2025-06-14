@@ -182,8 +182,10 @@ dependencies = [
 name = "easy_ipc_derive"
 version = "0.1.0"
 dependencies = [
+ "easy_ipc",
  "proc-macro2",
  "quote",
+ "serde",
  "syn",
 ]
 
