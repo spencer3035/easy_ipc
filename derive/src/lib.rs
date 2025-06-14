@@ -1,7 +1,6 @@
 use proc_macro::TokenStream;
-use quote::ToTokens;
 use quote::quote;
-use syn::{Attribute, DeriveInput, Expr, Meta, Type, parse_macro_input};
+use syn::{Attribute, DeriveInput, Type, parse_macro_input};
 
 #[proc_macro_derive(Model, attributes(server_message, client_message))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
@@ -23,22 +22,12 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
             type ServerMsg = #server_message;
             type ClientMsg = #client_message;
             fn model() -> ::easy_ipc::prelude::ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-                ::easy_ipc::model!();
+                ::easy_ipc::model!()
             }
         }
     };
 
     TokenStream::from(model_impl)
-}
-
-fn parse_attr_to_type(attr: &Attribute) -> Option<syn::Type> {
-    if let Ok(Meta::NameValue(mvn)) = attr.parse_args() {
-        if let Expr::Path(path) = mvn.value {
-            let msg: Type = syn::parse(path.path.to_token_stream().into()).ok()?;
-            return Some(msg);
-        }
-    }
-    None
 }
 
 /// Gets (server_message, client_message)
@@ -48,22 +37,17 @@ fn parse_message_type(attrs: &[Attribute]) -> Result<(syn::Type, syn::Type), Str
     let server_attr_invalid = "Needs to have valid type in #[server_message = \"...\"]";
     let client_attr_invalid = "Needs to have valid type in #[client_message = \"...\"]";
     for attr in attrs {
-        if let Some(ident) = attr.path().get_ident() {
-            match ident.to_string().as_str() {
-                "server_message" => {
-                    let Some(ty) = parse_attr_to_type(attr) else {
-                        return Err(server_attr_invalid.to_string());
-                    };
-                    server_msg_ty = Some(ty);
-                }
-                "client_message" => {
-                    let Some(ty) = parse_attr_to_type(attr) else {
-                        return Err(client_attr_invalid.to_string());
-                    };
-                    client_msg_ty = Some(ty);
-                }
-                _ => {}
-            }
+        if attr.path().is_ident("server_message") {
+            let ty: Type = attr
+                .parse_args()
+                .map_err(|_| server_attr_invalid.to_string())?;
+            server_msg_ty = Some(ty);
+        };
+        if attr.path().is_ident("client_message") {
+            let ty: Type = attr
+                .parse_args()
+                .map_err(|_| client_attr_invalid.to_string())?;
+            client_msg_ty = Some(ty);
         }
     }
 

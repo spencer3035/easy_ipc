@@ -18,6 +18,7 @@ libc = "0.2.172"
 # For the examples
 app-common = { path = "examples/full/app-common" }
 clap = { version = "4.5.39", features = ["derive"] }
+easy_ipc_derive = { path = "derive" }
 
 [[example]]
 name = "app-common"
