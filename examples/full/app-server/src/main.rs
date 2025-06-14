@@ -33,7 +33,7 @@ fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage
                 // running variable so that it exits immediately instead of waiting for the next
                 // client to send a message. We ignore errors because the server might have stopped
                 // already.
-                if let Ok(mut kill_client) = MyModel.client() {
+                if let Ok(mut kill_client) = MyModel::client() {
                     let _ = kill_client.send(ClientMessage::Stop);
                 }
             });
@@ -48,7 +48,7 @@ fn handle_incomming_connection(mut conn: Connection<ServerMessage, ClientMessage
 
 fn main() {
     // Create our server
-    let server = MyModel.server().unwrap();
+    let server = MyModel::server().unwrap();
     let mut threads = Vec::new();
 
     // Loop over all incoming connections

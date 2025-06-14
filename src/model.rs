@@ -60,17 +60,6 @@ macro_rules! socket_name {
 
 static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
-pub struct ClientServerOptions<C, S>
-where
-    C: Serialize + for<'de> Deserialize<'de>,
-    S: Serialize + for<'de> Deserialize<'de>,
-{
-    pub(crate) options_inner: OptionsRaw,
-    pub(crate) handler: fn(&ClientServerModel<C, S>),
-    _client: PhantomData<C>,
-    _server: PhantomData<S>,
-}
-
 #[derive(Debug)]
 pub(crate) struct OptionsRaw {
     pub(crate) socket_name: PathBuf,
@@ -87,6 +76,17 @@ impl OptionsRaw {
             magic_bytes: b"4242",
         }
     }
+}
+
+pub struct ClientServerOptions<C, S>
+where
+    C: Serialize + for<'de> Deserialize<'de>,
+    S: Serialize + for<'de> Deserialize<'de>,
+{
+    pub(crate) options_inner: OptionsRaw,
+    pub(crate) handler: fn(&ClientServerModel<C, S>),
+    _client: PhantomData<C>,
+    _server: PhantomData<S>,
 }
 
 /// A model for a Client Server IPC interface. Client messages are denoted by the generic `C` and
@@ -158,25 +158,34 @@ pub trait Model {
     type ServerMsg: Serialize + for<'de> Deserialize<'de>;
 
     /// Generate a client/server model. See [`ClientServerOptions`] on how to create a new model.
-    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
+    ///
+    /// This function needs to be pure (have no side effects) to be sound. The client and the
+    /// server need to agree on what the model looks like in order to communicate. This is
+    /// partially enforced by the function taking no arguments.
+    fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
 
-    /// Make a new client, errors if unable to connect to server. Multiple clients can exist at the
-    /// same time.
-    fn client(self) -> Result<Client<Self::ClientMsg, Self::ServerMsg>, InitError>
+    /// Make a new client, errors if unable to connect to server.
+    ///
+    /// Multiple clients can exist at the same time.
+    ///
+    /// This should not be implemented (in fact it is not possible).
+    fn client() -> Result<Client<Self::ClientMsg, Self::ServerMsg>, InitError>
     where
         Self: Sized,
     {
-        self.model().client()
+        Self::model().client()
     }
 
     /// Try to create a new server instance.
     ///
     /// Needs to be created before clients. Only one server can exist at a time on a given host.
-    fn server(self) -> Result<Server<Self::ServerMsg, Self::ClientMsg>, InitError>
+    ///
+    /// This should not be implemented (in fact it is not possible).
+    fn server() -> Result<Server<Self::ServerMsg, Self::ClientMsg>, InitError>
     where
         Self: Sized,
     {
-        self.model().server()
+        Self::model().server()
     }
 }
 

@@ -9,7 +9,7 @@ impl Model for MyModel {
     type ServerMsg = ServerMessage;
     type ClientMsg = ClientMessage;
 
-    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
+    fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
         ClientServerOptions::new(socket_name!()).create()
     }
 }

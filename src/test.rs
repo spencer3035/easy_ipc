@@ -34,7 +34,7 @@ macro_rules! define_model {
         type ServerMsg = $server_enum;
         type ClientMsg = $client_enum;
 
-        fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
+        fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
             let socket_name = $socket_name;
             ClientServerOptions::new(default_socket(socket_name))
                 .handlers(|_model| {})
@@ -56,9 +56,9 @@ fn basic_multi_client() {
         },
     );
 
-    let model = BasicModel.model();
+    let model = BasicModel::model();
     cleanup(&model.options().socket_name);
-    let server = BasicModel.server().unwrap();
+    let server = BasicModel::server().unwrap();
 
     let mut handles = Vec::new();
     let num_conn = 10;
@@ -78,7 +78,7 @@ fn basic_multi_client() {
     handles.push(handle);
 
     for _ii in 0..num_conn {
-        let mut client = BasicModel.client().unwrap();
+        let mut client = BasicModel::client().unwrap();
         let handle = spawn(move || {
             client.send(ClientMessage::Ping).unwrap();
             assert_eq!(client.receive().unwrap(), ServerMessage::Pong);
@@ -105,11 +105,11 @@ fn basic_multi_server() {
         },
     );
 
-    let model = BasicModel.model();
+    let model = BasicModel::model();
     cleanup(&model.options().socket_name);
-    let _server = BasicModel.server().unwrap();
+    let _server = BasicModel::server().unwrap();
     assert!(matches!(
-        BasicModel.server().unwrap_err(),
+        BasicModel::server().unwrap_err(),
         InitError::SocketAlreadyExists,
     ));
 }
@@ -126,10 +126,10 @@ fn basic_send_receive() {
         },
     );
 
-    let model = BasicModel.model();
+    let model = BasicModel::model();
     cleanup(&model.options().socket_name);
 
-    let server = BasicModel.server().unwrap();
+    let server = BasicModel::server().unwrap();
     assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
 
     let handle = spawn(move || {
@@ -141,7 +141,7 @@ fn basic_send_receive() {
         }
     });
 
-    let mut client = BasicModel.client().unwrap();
+    let mut client = BasicModel::client().unwrap();
     client.send(ClientMessage::Ping).unwrap();
     assert_eq!(ServerMessage::Pong, client.receive().unwrap());
 

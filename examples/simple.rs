@@ -17,7 +17,7 @@ impl Model for MyModel {
     type ServerMsg = ServerMessage;
     type ClientMsg = ClientMessage;
 
-    fn model(self) -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
+    fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
         ClientServerOptions::new(socket_name!()).create()
     }
 }
@@ -38,9 +38,9 @@ enum ClientMessage {
 
 fn main() {
     // Make new server (needs to be before client)
-    let server = MyModel.server().unwrap();
+    let server = MyModel::server().unwrap();
     // Make a new client
-    let mut client = MyModel.client().unwrap();
+    let mut client = MyModel::client().unwrap();
 
     // Spawn server in new thread (Normally this would be another process)
     let handle = std::thread::spawn(move || {

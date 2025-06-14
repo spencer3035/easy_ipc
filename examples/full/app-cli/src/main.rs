@@ -40,7 +40,7 @@ fn main() {
     // Convert args to a message
     let msg: ClientMessage = args.op.into();
     // Make our client
-    let mut client = MyModel.client().unwrap();
+    let mut client = MyModel::client().unwrap();
     // Send the message to the server
     client.send(msg.clone()).unwrap();
     // Get the response and print it out
