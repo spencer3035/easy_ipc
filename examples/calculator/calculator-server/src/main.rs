@@ -3,7 +3,7 @@ use std::{
     thread::spawn,
 };
 
-use app_common::{ClientMessage, MyModel, ServerMessage};
+use calculator_common::{ClientMessage, MyModel, ServerMessage};
 use easy_ipc::{connection::Connection, model::Model};
 
 static RUNNING: AtomicBool = AtomicBool::new(true);

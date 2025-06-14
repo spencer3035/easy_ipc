@@ -1,3 +1,3 @@
 [workspace]
-members = [ "easy_ipc", "easy_ipc_derive", "examples/full/app-cli", "examples/full/app-common", "examples/full/app-server"]
+members = [ "easy_ipc", "easy_ipc_derive", "examples/calculator/calculator-cli", "examples/calculator/calculator-common", "examples/calculator/calculator-server"]
 resolver = "3"

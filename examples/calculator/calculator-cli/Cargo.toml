@@ -1,9 +1,9 @@
 [package]
-name = "app-cli"
+name = "calculator-cli"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 easy_ipc = { path = "../../../easy_ipc" }
-app-common = { path = "../app-common" }
+calculator-common = { path = "../calculator-common" }
 clap = { version = "4.5.39", features = ["derive"] }

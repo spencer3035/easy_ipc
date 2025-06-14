@@ -2,9 +2,9 @@ use clap::{Parser, Subcommand};
 use easy_ipc::prelude::*;
 
 // Bring in our model and messages into scope.
-use app_common::{ClientMessage, MyModel};
+use calculator_common::{ClientMessage, MyModel};
 
-/// Simple command line interface that lets you call it like `app-cli add 1 2`
+/// Simple command line interface that lets you call it like `calculator-cli add 1 2`
 #[derive(Parser)]
 struct Cli {
     #[command(subcommand)]

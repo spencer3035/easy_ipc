@@ -1,8 +1,8 @@
 [package]
-name = "app-common"
+name = "calculator-server"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 easy_ipc = { path = "../../../easy_ipc" }
-serde = { version = "1.0.219", features = ["derive"] }
+calculator-common = { path = "../calculator-common" }

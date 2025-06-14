@@ -53,31 +53,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "app-cli"
-version = "0.1.0"
-dependencies = [
- "app-common",
- "clap",
- "easy_ipc",
-]
-
-[[package]]
-name = "app-common"
-version = "0.1.0"
-dependencies = [
- "easy_ipc",
- "serde",
-]
-
-[[package]]
-name = "app-server"
-version = "0.1.0"
-dependencies = [
- "app-common",
- "easy_ipc",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -112,6 +87,31 @@ name = "bytemuck"
 version = "1.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c76a5792e44e4abe34d3abf15636779261d45a7450612059293d1d2cfc63422"
+
+[[package]]
+name = "calculator-cli"
+version = "0.1.0"
+dependencies = [
+ "calculator-common",
+ "clap",
+ "easy_ipc",
+]
+
+[[package]]
+name = "calculator-common"
+version = "0.1.0"
+dependencies = [
+ "easy_ipc",
+ "serde",
+]
+
+[[package]]
+name = "calculator-server"
+version = "0.1.0"
+dependencies = [
+ "calculator-common",
+ "easy_ipc",
+]
 
 [[package]]
 name = "clap"
