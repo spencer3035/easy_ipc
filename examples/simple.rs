@@ -7,20 +7,14 @@
 //! implementation at [../examples/full/].
 
 use easy_ipc::prelude::*;
+use easy_ipc_derive::Model;
 use serde::{Deserialize, Serialize};
 
 /// Example Model
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Model)]
+#[server_message(ServerMessage)]
+#[client_message(ClientMessage)]
 struct MyModel;
-
-impl Model for MyModel {
-    type ServerMsg = ServerMessage;
-    type ClientMsg = ClientMessage;
-
-    fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-        model!()
-    }
-}
 
 /// Example server messages
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
