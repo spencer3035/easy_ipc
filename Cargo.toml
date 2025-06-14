@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = [ "derive","examples/full/app-cli", "examples/full/app-common", "examples/full/app-server"]
+members = [ "easy_ipc_derive", "examples/full/app-cli", "examples/full/app-common", "examples/full/app-server"]
 
 [dependencies]
 interprocess = "2.2.3"
@@ -18,7 +18,7 @@ libc = "0.2.172"
 # For the examples
 app-common = { path = "examples/full/app-common" }
 clap = { version = "4.5.39", features = ["derive"] }
-easy_ipc_derive = { path = "derive" }
+easy_ipc_derive = { path = "easy_ipc_derive" }
 
 [[example]]
 name = "app-common"
