@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 
 // Enum model
 #[derive(Model)]
-#[server_message(ServerEnumMessage)]
-#[client_message(ClientEnumMessage)]
+#[easy_ipc(server_message = ServerEnumMessage, client_message = ClientEnumMessage)]
 struct MyEnumModel;
 
 #[derive(Serialize, Deserialize)]
@@ -19,17 +18,17 @@ enum ClientEnumMessage {
 }
 
 // Struct model
-#[derive(Model)]
-#[server_message(ServerEnumMessage)]
-#[client_message(ClientEnumMessage)]
-struct MyStructModel;
-
-#[derive(Serialize, Deserialize)]
-struct ServerStructMessage {
-    data: u32,
-}
-
-#[derive(Serialize, Deserialize)]
-struct ClientStructMessage {
-    send: u32,
-}
+// #[derive(Model)]
+// #[easy_ipc::server_message(ServerEnumMessage)]
+// #[easy_ipc::client_message(ClientEnumMessage)]
+// struct MyStructModel;
+//
+// #[derive(Serialize, Deserialize)]
+// struct ServerStructMessage {
+//     data: u32,
+// }
+//
+// #[derive(Serialize, Deserialize)]
+// struct ClientStructMessage {
+//     send: u32,
+// }
