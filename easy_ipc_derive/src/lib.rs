@@ -1,6 +1,8 @@
+use std::fmt::Display;
+
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Attribute, DeriveInput, Ident, Type, parse::Parse};
+use syn::{DeriveInput, Ident, Type, parse::Parse};
 
 #[proc_macro_derive(Model, attributes(easy_ipc))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
@@ -9,12 +11,10 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
     let MessageAttributes {
         server_message,
         client_message,
-    } = match parse_message_type(&input.attrs) {
+    } = match parse_message_type(&input) {
         Ok(messages) => messages,
         Err(err) => {
-            return syn::Error::new_spanned(&input, err)
-                .to_compile_error()
-                .into();
+            return err.into_compile_error().into();
         }
     };
 
@@ -38,52 +38,19 @@ const SERVER_MESSAGE: &str = "server_message";
 const CLIENT_MESSAGE: &str = "client_message";
 
 /// Gets (server_message, client_message)
-fn parse_message_type(attrs: &[Attribute]) -> Result<MessageAttributes, String> {
-    println!("{:#?}", attrs);
-    let mut server_msg_ty = None;
-    let mut client_msg_ty = None;
-    let server_attr_invalid =
-        format!("Needs to have valid type in #[{CRATE_NAME}::{SERVER_MESSAGE} = \"...\"]");
-    let client_attr_invalid =
-        format!("Needs to have valid type in #[{CRATE_NAME}::{CLIENT_MESSAGE} = \"...\"]");
-    for attr in attrs {
+fn parse_message_type(input: &DeriveInput) -> Result<MessageAttributes, syn::Error> {
+    for attr in &input.attrs {
         let segments = &attr.path().segments;
-        if segments.len() == 2 && segments[0].ident.to_string() == "easy_ipc" {
-            let kind = &segments[1];
-            println!("Got kind {kind:#?} ({})", kind.ident.to_string());
-            match kind.ident.to_string().as_str() {
-                "server_message" => {
-                    let ty: Type = attr
-                        .parse_args()
-                        .map_err(|_| server_attr_invalid.to_string())?;
-                    server_msg_ty = Some(ty);
-                }
-                "client_message" => {
-                    let ty: Type = attr
-                        .parse_args()
-                        .map_err(|_| client_attr_invalid.to_string())?;
-                    client_msg_ty = Some(ty);
-                }
-
-                _ => {}
-            }
+        if segments.len() == 1 && segments[0].ident == CRATE_NAME {
+            let tmp: MessageAttributes = attr.parse_args().map_err(|mut e| {
+                e.combine(syn::Error::new(e.span(), DeriveError::GenericError));
+                e
+            })?;
+            return Ok(tmp);
         }
     }
 
-    let server_attr_missing =
-        "Missing or invalid attribute, need #[easy_ipc::server_message = \"...\"]";
-    let client_attr_missing =
-        "Missing of invalid attribute, need #[easy_ipc::client_message = \"...\"]";
-
-    let server_msg_ty = server_msg_ty.ok_or(server_attr_missing.to_string())?;
-    let client_msg_ty = client_msg_ty.ok_or(client_attr_missing.to_string())?;
-
-    println!("Got server: {:#?}", server_msg_ty);
-    println!("Got client: {:#?}", client_msg_ty);
-    Ok(MessageAttributes {
-        server_message: server_msg_ty,
-        client_message: client_msg_ty,
-    })
+    Err(syn::Error::new_spanned(&input, DeriveError::GenericError))
 }
 
 struct MessageAttributes {
@@ -91,29 +58,68 @@ struct MessageAttributes {
     client_message: syn::Type,
 }
 
-const NEED_BOTH_CLI_SER_ERROR: &str = "Expected ";
+enum DeriveError {
+    MissingServerMessage,
+    MissingClientMessage,
+    GenericError,
+}
+
+impl Display for DeriveError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DeriveError::MissingServerMessage => {
+                write!(f, "missing {SERVER_MESSAGE} = YourServerMessage")
+            }
+            DeriveError::MissingClientMessage => {
+                write!(f, "missing {CLIENT_MESSAGE} = YourClientMessage")
+            }
+            DeriveError::GenericError => {
+                write!(
+                    f,
+                    "{CRATE_NAME} needs attributes defining server and client messages \n`#[{CRATE_NAME}({CLIENT_MESSAGE} = YourClientMessage, {SERVER_MESSAGE} = YourServerMessage)]`"
+                )
+            }
+        }
+    }
+}
 
 impl Parse for MessageAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        // Parse "first_ident = first_type"
         let first_ident: Ident = input.parse()?;
         input.parse::<syn::Token![=]>()?;
         let first_type: Type = input.parse()?;
 
+        // Comma separated
         input.parse::<syn::Token![,]>()?;
 
+        // Parse "second_ident = second_type"
         let second_ident: Ident = input.parse()?;
         input.parse::<syn::Token![=]>()?;
         let second_type: Type = input.parse()?;
 
+        // Split them into server/client messages depending on the identifiers
         let (server_message, client_message) = match (
             first_ident.to_string().as_str(),
             second_ident.to_string().as_str(),
         ) {
             (CLIENT_MESSAGE, SERVER_MESSAGE) => (second_type, first_type),
             (SERVER_MESSAGE, CLIENT_MESSAGE) => (first_type, second_type),
-            _ => return Err(input.error(NEED_BOTH_CLI_SER_ERROR)),
+            _ => {
+                let has_server_message = first_ident.to_string() == SERVER_MESSAGE
+                    || second_ident.to_string() == SERVER_MESSAGE;
+                let has_client_message = first_ident.to_string() == CLIENT_MESSAGE
+                    || second_ident.to_string() == CLIENT_MESSAGE;
+
+                if !has_server_message {
+                    return Err(input.error(DeriveError::MissingServerMessage));
+                }
+                if !has_client_message {
+                    return Err(input.error(DeriveError::MissingClientMessage));
+                }
+                unreachable!();
+            }
         };
-        println!("first = {}", first_ident.to_string());
 
         Ok(MessageAttributes {
             server_message,

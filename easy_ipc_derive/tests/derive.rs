@@ -18,17 +18,16 @@ enum ClientEnumMessage {
 }
 
 // Struct model
-// #[derive(Model)]
-// #[easy_ipc::server_message(ServerEnumMessage)]
-// #[easy_ipc::client_message(ClientEnumMessage)]
-// struct MyStructModel;
-//
-// #[derive(Serialize, Deserialize)]
-// struct ServerStructMessage {
-//     data: u32,
-// }
-//
-// #[derive(Serialize, Deserialize)]
-// struct ClientStructMessage {
-//     send: u32,
-// }
+#[derive(Model)]
+#[easy_ipc(server_message = ServerStructMessage, client_message = ClientStructMessage)]
+struct MyStructModel;
+
+#[derive(Serialize, Deserialize)]
+struct ServerStructMessage {
+    data: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ClientStructMessage {
+    send: u32,
+}

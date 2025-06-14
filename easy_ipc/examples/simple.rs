@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 
 /// Example Model
 #[derive(Debug, Copy, Clone, Model)]
-#[server_message(ServerMessage)]
-#[client_message(ClientMessage)]
+#[easy_ipc(client_message = ClientMessage, server_message = ServerMessage)]
 struct MyModel;
 
 /// Example server messages
