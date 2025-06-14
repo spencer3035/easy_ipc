@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["examples/full/app-cli", "examples/full/app-common", "examples/full/app-server"]
+members = [ "derive","examples/full/app-cli", "examples/full/app-common", "examples/full/app-server"]
 
 [dependencies]
 interprocess = "2.2.3"
