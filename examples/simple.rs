@@ -6,7 +6,7 @@
 //! and your structure that implements [`ClientServerModel`]. You can see a more normal
 //! implementation at [../examples/full/].
 
-use easy_ipc::{prelude::*, socket_name};
+use easy_ipc::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Example Model
@@ -18,7 +18,7 @@ impl Model for MyModel {
     type ClientMsg = ClientMessage;
 
     fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-        ClientServerOptions::new(socket_name!()).create()
+        model!()
     }
 }
 

@@ -43,10 +43,10 @@ pub mod server;
 /// Common required imports
 pub mod prelude {
     pub use crate::client::Client;
+    pub use crate::model;
     pub use crate::model::ClientServerModel;
     pub use crate::model::ClientServerOptions;
     pub use crate::model::Model;
-    pub use crate::model::default_socket;
     pub use crate::server::Server;
 }
 

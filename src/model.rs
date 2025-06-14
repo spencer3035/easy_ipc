@@ -13,7 +13,7 @@ use {
 ///
 /// On linux it would be something like `"/run/user/1000/<filename>"`.
 /// ```
-/// use easy_ipc::prelude::default_socket;
+/// use easy_ipc::model::default_socket;
 /// let my_socket = default_socket("myapp.socket");
 /// ```
 // TODO: Make more generic than &str?
@@ -53,17 +53,40 @@ fn default_socket_path() -> PathBuf {
 #[macro_export]
 macro_rules! socket_name {
     () => {{
-        let name = env!("CARGO_CRATE_NAME").to_string() + ".socket";
-        $crate::prelude::default_socket(&name)
+        let name = ::std::string::ToString::to_string(::std::env!("CARGO_CRATE_NAME")) + ".socket";
+        $crate::model::default_socket(&name)
     }};
+}
+
+/// Expands the "CARGO_PKG_VERSION" environment variable, usually something like "1.2.3".
+#[macro_export]
+macro_rules! version_string {
+    () => {
+        ::std::env!("CARGO_PKG_VERSION")
+    };
+}
+
+/// Create a new [`ClientServerModel`] instance with sane defaults
+///
+/// This makes use of [`version_string`] to create a header magic bytes and [`socket_name`] to name
+/// the connection.
+#[macro_export]
+macro_rules! model {
+    () => {
+        $crate::prelude::ClientServerOptions::new($crate::socket_name!())
+            .magic_bytes($crate::version_string!())
+            .create()
+    };
 }
 
 static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
+/// Internal options that a server/client model can have
 #[derive(Debug)]
 pub(crate) struct OptionsRaw {
     pub(crate) socket_name: PathBuf,
-    pub(crate) magic_bytes: &'static [u8],
+    pub(crate) magic_bytes: Vec<u8>,
+    pub(crate) disable_single_server_check: bool,
 }
 
 impl OptionsRaw {
@@ -73,7 +96,8 @@ impl OptionsRaw {
     {
         Self {
             socket_name: namespace.as_ref().to_path_buf(),
-            magic_bytes: b"4242",
+            magic_bytes: b"4242".to_vec(),
+            disable_single_server_check: false,
         }
     }
 }
@@ -121,8 +145,11 @@ where
     /// Changing this value will break compatibility for previous versions of your program. Both
     /// the client and the server need to agree on this value for messages to be passed back and
     /// forth.
-    pub fn magic_bytes(mut self, magic_bytes: &'static [u8]) -> Self {
-        self.options_inner.magic_bytes = magic_bytes;
+    pub fn magic_bytes<T>(mut self, magic_bytes: T) -> Self
+    where
+        T: Into<Vec<u8>>,
+    {
+        self.options_inner.magic_bytes = magic_bytes.into();
         self
     }
 
@@ -137,8 +164,8 @@ where
     /// [`ClientServerModel::server`] is called.
     ///
     /// By default, we set up panic and signal handlers to automatically delete the socket file
-    /// generated at the namespace set in [`ClientServerOptions`] so that when the program exists with Ctrl-c or a
-    /// termination signal there are no issues with creating another server.
+    /// generated at the namespace set in [`ClientServerOptions`] so that when the program exists
+    /// with Ctrl-c or a termination signal there are no issues with creating another server.
     ///
     /// It is recommended you look at or use [`cleanup`] and also understand how this library works
     /// under the hood before calling this method.
@@ -147,7 +174,17 @@ where
         self
     }
 
-    // Create a new client-server model with the given options
+    /// Allow multiple servers to run in a single process.
+    ///
+    /// By default, we use an atomic check to ensure only one [`Server`] is created in a process to
+    /// protect against user errors, you can disable that check here if, for instance, you want to
+    /// have multiple servers connected to different sockets running at the same time.
+    pub fn disable_single_server_check(mut self) -> Self {
+        self.options_inner.disable_single_server_check = true;
+        self
+    }
+
+    /// Create a new client-server model with the given options
     pub fn create(self) -> ClientServerModel<C, S> {
         ClientServerModel::new(self)
     }
@@ -161,7 +198,7 @@ pub trait Model {
     ///
     /// This function needs to be pure (have no side effects) to be sound. The client and the
     /// server need to agree on what the model looks like in order to communicate. This is
-    /// partially enforced by the function taking no arguments.
+    /// partially enforced by the function taking no arguments. For simple use cases, use [`model`]
     fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
 
     /// Make a new client, errors if unable to connect to server.
@@ -261,9 +298,7 @@ where
         let server_lock = SERVER_RUNNING.fetch_or(true, std::sync::atomic::Ordering::Relaxed);
         // TODO: This prevents two servers from running, even if they are on different sockets,
         // this is probably not desired, maybe we could have an option to disable this check?
-        if server_lock {
-            // Skip for testing so we can test lots of servers
-            #[cfg(not(test))]
+        if server_lock && !self.options.options_inner.disable_single_server_check {
             return Err(InitError::ServerAlreadyRunning);
         }
         // We need to setup handlers after creating the listener to avoid killing a running

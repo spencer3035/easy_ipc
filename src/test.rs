@@ -36,7 +36,8 @@ macro_rules! define_model {
 
         fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
             let socket_name = $socket_name;
-            ClientServerOptions::new(default_socket(socket_name))
+            ClientServerOptions::new($crate::model::default_socket(socket_name))
+                .disable_single_server_check()
                 .handlers(|_model| {})
                 .create()
         }

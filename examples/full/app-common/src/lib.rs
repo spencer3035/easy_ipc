@@ -1,4 +1,4 @@
-use easy_ipc::{prelude::*, socket_name};
+use easy_ipc::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Define you model and implement [`ClientServerModel`] for it.
@@ -10,7 +10,7 @@ impl Model for MyModel {
     type ClientMsg = ClientMessage;
 
     fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-        ClientServerOptions::new(socket_name!()).create()
+        model!()
     }
 }
 
