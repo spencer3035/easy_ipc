@@ -1,0 +1,15 @@
+[package]
+name = "easy_ipc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+interprocess = "2.2.3"
+users = "0.11.0"
+bitcode = { version = "0.6.6", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive"] }
+signal-hook = "0.3.18"
+libc = "0.2.172"
+easy_ipc_derive = { path = "../easy_ipc_derive/" }
+
+[dev-dependencies]
