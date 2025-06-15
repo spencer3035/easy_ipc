@@ -1,7 +1,6 @@
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
 use interprocess::local_socket::{GenericNamespaced, ToNsName};
-use signal_hook::{consts::*, iterator::Signals};
 
 use {
     crate::{client::Client, error::InitError, server::Server},
@@ -378,11 +377,21 @@ where
     }
 }
 
-/// Handles os signals by calling the cleanup function
+#[cfg(target_os = "windows")]
 fn handle_os_signals<P>(path: P) -> Result<(), std::io::Error>
 where
     P: AsRef<Path>,
 {
+    // TODO:
+    Ok(())
+}
+/// Handles os signals by calling the cleanup function
+#[cfg(target_os = "linux")]
+fn handle_os_signals<P>(path: P) -> Result<(), std::io::Error>
+where
+    P: AsRef<Path>,
+{
+    use signal_hook::{consts::*, iterator::Signals};
     // Handle all term signals
     let mut signals = Signals::new(TERM_SIGNALS)?;
     for sig in signals.forever() {
@@ -420,6 +429,7 @@ where
         if let Err(e) = handle_os_signals(&path_clone) {
             panic!("Failed setting up signal handlers: {e}");
         }
+        // TODO: Windows hits here because handle_os_signals exits
         panic!("Stopped handling signals.");
     });
 }
