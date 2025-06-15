@@ -2,6 +2,10 @@
 name = "easy_ipc_derive"
 version = "0.1.0"
 edition = "2024"
+authors = ["spencer3035 <spencer3035@gmail.com>"]
+description = "Easy interprocess communication framework"
+keywords = ["ipc", "interprocess"]
+license = "MIT NON-AI"
 
 [lib]
 proc-macro = true
