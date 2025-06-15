@@ -1,19 +1,12 @@
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
+use interprocess::local_socket::{GenericNamespaced, NameType};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ConnectionError, InitError};
-use crate::model::cleanup;
+use crate::handlers::cleanup;
 use crate::prelude::*;
-
-/// TODO: Add a derive for something like
-/// ```no_compile
-/// #[derive(ClientServerModel)]
-/// #[server_message(ServerMessage)]
-/// #[client_message(ClientMessage)]
-/// pub struct Model;
-/// ```
 
 macro_rules! define_model {
     (
@@ -36,7 +29,7 @@ macro_rules! define_model {
 
         fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
             let socket_name = $socket_name;
-            ClientServerOptions::new($crate::model::default_socket(socket_name))
+            ClientServerOptions::new($crate::namespace::default_namespace(socket_name))
                 .disable_single_server_check()
                 .handlers(|_model| {})
                 .create()
@@ -131,7 +124,9 @@ fn basic_send_receive() {
     cleanup(&model.options().socket_name);
 
     let server = BasicModel::server().unwrap();
-    assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
+    if !GenericNamespaced::is_supported() {
+        assert!(matches!(model.options().socket_name.try_exists(), Ok(true)));
+    }
 
     let handle = spawn(move || {
         for conn in server.connections() {

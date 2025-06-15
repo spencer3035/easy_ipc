@@ -14,7 +14,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 signal-hook = "0.3.18"
 easy_ipc_derive = { path = "../easy_ipc_derive/" }
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(target_family = "unix")'.dependencies]
 libc = "0.2.172"
 users = "0.11.0"
 

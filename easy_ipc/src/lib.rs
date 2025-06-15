@@ -77,19 +77,6 @@
 //!
 //! TODO:
 
-/// Client process
-pub mod client;
-/// Connection between client and server
-pub mod connection;
-/// Error enumerations
-pub mod error;
-/// Definition of client server model
-pub mod model;
-/// Packets used to send data across the sockets
-pub(crate) mod packet;
-/// Server process
-pub mod server;
-
 /// Common required imports
 pub mod prelude {
     pub use crate::client::Client;
@@ -101,5 +88,25 @@ pub mod prelude {
     pub use easy_ipc_derive::Model;
 }
 
+/// Client process
+pub mod client;
+/// Connection between client and server
+pub mod connection;
+/// Error enumerations
+pub mod error;
+/// Handle OS signals
+pub mod handlers;
+/// Definition of client server model
+pub mod model;
+/// Handle getting default namespace information
+pub mod namespace;
+/// Packets used to send data across the sockets
+pub(crate) mod packet;
+/// Server process
+pub mod server;
+
+/// Helper macros
+mod macros;
+/// Tests
 #[cfg(test)]
 mod test;
