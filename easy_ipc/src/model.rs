@@ -1,5 +1,6 @@
 use std::{marker::PhantomData, sync::atomic::AtomicBool};
 
+use interprocess::local_socket::{GenericNamespaced, ToNsName};
 use signal_hook::{consts::*, iterator::Signals};
 
 use {
@@ -26,17 +27,19 @@ where
     path
 }
 
-// TODO: Implement for "windows" "macos" "ios" "linux" "android" "freebsd" "dragonfly" "openbsd" "netbsd"
-// "none" should always fail, we need an os to do what this crate does
+// TODO: Implement for "macos" "ios" "android" "freebsd" "dragonfly" "openbsd" "netbsd" "none"
+// should always fail, we need an os to do what this crate does.
 #[cfg(not(target_os = "linux"))]
+#[cfg(not(target_os = "windows"))]
 fn default_socket_path() -> PathBuf {
     panic!("platform not supported")
 }
 
-// #[cfg(target_os = "windows")]
-// fn default_socket_path() -> PathBuf {
-//     PathBuf::from("")
-// }
+#[cfg(target_os = "windows")]
+fn default_socket_path() -> PathBuf {
+    // Windows only supports pipes in namespaces
+    PathBuf::new()
+}
 
 #[cfg(target_os = "linux")]
 fn default_socket_path() -> PathBuf {
@@ -58,7 +61,7 @@ fn default_socket_path() -> PathBuf {
 #[macro_export]
 macro_rules! socket_name {
     () => {{
-        let name = ::std::string::ToString::to_string(::std::env!("CARGO_CRATE_NAME")) + ".socket";
+        let name = ::std::string::ToString::to_string(::std::env!("CARGO_CRATE_NAME")) + ".sock";
         $crate::model::default_socket(&name)
     }};
 }
@@ -319,10 +322,20 @@ fn pathbuf_to_interprocess_name<'a, P>(path: P) -> Result<Name<'a>, InitError>
 where
     P: AsRef<Path> + 'a,
 {
-    path.as_ref()
-        .to_owned()
-        .to_fs_name::<GenericFilePath>()
-        .map_err(|e| InitError::FailedConnectingToSocket(e))
+    let len = path.as_ref().iter().count();
+    if len == 1 && GenericNamespaced::is_supported() {
+        path.as_ref()
+            .file_name()
+            .ok_or(InitError::BadPath)?
+            .to_owned()
+            .to_ns_name::<GenericNamespaced>()
+            .map_err(|e| InitError::FailedConnectingToSocket(e))
+    } else {
+        path.as_ref()
+            .to_owned()
+            .to_fs_name::<GenericFilePath>()
+            .map_err(|e| InitError::FailedConnectingToSocket(e))
+    }
 }
 
 /// Trys to cleanup the socket file if it exists.

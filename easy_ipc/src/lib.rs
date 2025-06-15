@@ -50,6 +50,9 @@
 //!             println!("{:?}", conn.receive().unwrap());
 //!             // Send an Success signal back
 //!             conn.send(ServerMessage::Success).unwrap();
+//!             // Usually you would not want to break after one connection, we do it here so that
+//!             // the function terminates.
+//!             break;
 //!         }
 //!     });
 //!
