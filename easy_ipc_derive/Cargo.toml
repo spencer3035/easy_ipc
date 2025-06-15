@@ -12,5 +12,5 @@ quote = "1.0.40"
 syn = { version = "2.0.103", features = ["full"] }
 
 [dev-dependencies]
-easy_ipc = { path = "../easy_ipc/" }
 serde = { version = "1.0.219", features = ["derive"] }
+easy_ipc = { path = "../easy_ipc/" }

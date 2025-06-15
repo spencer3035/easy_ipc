@@ -33,6 +33,11 @@ fn default_socket_path() -> PathBuf {
     panic!("platform not supported")
 }
 
+// #[cfg(target_os = "windows")]
+// fn default_socket_path() -> PathBuf {
+//     PathBuf::from("")
+// }
+
 #[cfg(target_os = "linux")]
 fn default_socket_path() -> PathBuf {
     let mut p = PathBuf::new();
@@ -160,8 +165,8 @@ where
     /// either need to do this yourself or deal with the issues associated with not doing it. In
     /// general, we assume in this library that you use the default implementation.
     ///
-    /// The function passed into this gets called a maximum of one time if
-    /// [`ClientServerModel::server`] is called.
+    /// The function passed into this gets called a maximum of one time if [`Model::server`] is
+    /// called.
     ///
     /// By default, we set up panic and signal handlers to automatically delete the socket file
     /// generated at the namespace set in [`ClientServerOptions`] so that when the program exists

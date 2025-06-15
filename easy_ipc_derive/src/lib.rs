@@ -11,7 +11,7 @@ const SERVER_MESSAGE: &str = "server_message";
 /// The name of the client message attribute
 const CLIENT_MESSAGE: &str = "client_message";
 
-/// Derive the [`easy_ipc::prelude::Model`] trait
+/// Derive the easy_ipc::prelude::Model trait
 #[proc_macro_derive(Model, attributes(easy_ipc))]
 pub fn derive_model(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as DeriveInput);
