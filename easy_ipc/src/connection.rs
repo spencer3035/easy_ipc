@@ -71,7 +71,6 @@ where
             ParseHeaderError::MagicBytesMissing => ConnectionError::HeaderMismatch,
         })?;
 
-        // Header::<M>::parse_header(&header).map_err(|_| ConnectionError::HeaderMismatch)?;
         let mut data = vec![0; data_len];
         let nread = self
             .connection

@@ -98,7 +98,7 @@ where
     /// generated at the namespace set in [`ClientServerOptions`] so that when the program exists
     /// with Ctrl-c or a termination signal there are no issues with creating another server.
     ///
-    /// It is recommended you look at the internal implementation of these handlers for a referece.
+    /// It is recommended you look at the internal implementation of these handlers for a reference.
     /// and also understand how this library works under the hood before calling this method.
     pub fn handlers(mut self, hook: fn(&ClientServerModel<C, S>)) -> Self {
         // If you are here to look for the internal implementation, look at the definition for the

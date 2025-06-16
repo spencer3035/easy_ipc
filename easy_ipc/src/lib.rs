@@ -66,16 +66,14 @@
 //!
 //!     // We make sure to join the handle here so that the `server` instance is dropped. This
 //!     // guarantees that the socket file is removed and we don't end up with a dangling socket file.
-//!     // There are internal safeguards for this.
+//!     // There are internal safeguards for this when used across processes.
 //!     handle.join().unwrap();
 //! }
 //! ```
 //!
 //! # Limitations
 //!
-//! Currently there are a few limitations:
-//!
-//! TODO:
+//! This crate cannot handle non-blocking send/receive messages at the moment.
 
 /// Common required imports
 pub mod prelude {

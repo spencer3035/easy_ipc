@@ -5,11 +5,11 @@ use {
     std::path::Path,
 };
 
-/// Trys to cleanup the socket file if it exists.
+/// Tries to cleanup the socket file if it exists.
 ///
-/// `Ok(true)` if the socket was sucessfully removed
+/// `Ok(true)` if the socket was successfully removed
 /// `Ok(false)` if there wasn't a socket file to remove
-/// `Err(_)` if the cleanup failed for an io reason.
+/// `Err(_)` if the cleanup failed for an IO reason.
 fn remove_socket_file<P>(socket: P) -> Result<bool, std::io::Error>
 where
     P: AsRef<Path>,
@@ -60,7 +60,7 @@ where
             libc::signal(sig, libc::SIG_DFL);
             libc::raise(sig);
         }
-        // Failsafe exit in case the re-raise of the signals doesn't properly exit
+        // Fail-safe exit in case the re-raise of the signals doesn't properly exit
         std::process::exit(1);
     }
     Ok(())

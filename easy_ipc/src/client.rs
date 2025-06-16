@@ -24,7 +24,6 @@ where
 {
     /// Create a new client given a connection
     pub(crate) fn new(opts: OptionsRaw, stream: Stream) -> Self {
-        //conn.map(|c| Connection::new(c, &self.opts))
         let opts = Arc::new(opts);
         let connection = Connection::new(stream, opts);
         Self {
@@ -35,7 +34,6 @@ where
     }
     /// Send a message to the server
     pub fn send(&mut self, msg: T) -> Result<(), ConnectionError> {
-        // self.connection.send(msg, &self.model)
         self.connection.send(msg)
     }
 

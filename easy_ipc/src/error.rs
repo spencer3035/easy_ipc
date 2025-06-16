@@ -36,13 +36,13 @@ impl Display for ConnectionError {
 pub enum InitError {
     /// Wasn't able to construct a namespace
     FailedGettingNamespace,
-    /// Path was not formatted correctly either for the os or the socket type.
+    /// Path was not formatted correctly either for the OS or the socket type.
     BadPath,
     /// Server is already connected an running, can't create a new one.
     ServerAlreadyRunning,
     /// Generic IO error like permission denied
     FailedConnectingToSocket(std::io::Error),
-    /// Specific to servers trying to connect to already existing sockets. This can happen if
-    /// the a server is already running or it exited in a non-graceful way.
+    /// Specific to servers trying to connect to already existing sockets. This can happen if a
+    /// server is already running or it exited in a non-graceful way.
     SocketAlreadyExists,
 }
