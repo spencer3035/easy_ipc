@@ -34,7 +34,7 @@
 //! #[easy_ipc(client_message = ClientMessage, server_message = ServerMessage)]
 //! struct MyModel;
 //!
-//! fn main() {
+//! fn run() {
 //!     // Make new server (needs to be before client)
 //!     let server = MyModel::server().unwrap();
 //!     // Make a new client

@@ -54,7 +54,7 @@ where
     use signal_hook::{consts::*, iterator::Signals};
     // Handle all term signals
     let mut signals = Signals::new(TERM_SIGNALS)?;
-    for sig in signals.forever() {
+    if let Some(sig) = signals.forever().next() {
         clean(path);
         unsafe {
             libc::signal(sig, libc::SIG_DFL);

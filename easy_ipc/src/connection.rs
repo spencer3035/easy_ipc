@@ -42,8 +42,7 @@ where
 
     /// Send a message to the other end of the connection.
     pub fn send(&mut self, message: T) -> Result<(), ConnectionError> {
-        let bytes =
-            bitcode::serialize(&message).map_err(ConnectionError::SerilizationFailed)?;
+        let bytes = bitcode::serialize(&message).map_err(ConnectionError::SerilizationFailed)?;
         let packet_bytes = self.make_packet(bytes);
         self.connection
             .get_mut()

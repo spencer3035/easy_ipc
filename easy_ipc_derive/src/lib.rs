@@ -138,10 +138,10 @@ impl Parse for MessageAttributes {
             (CLIENT_MESSAGE, SERVER_MESSAGE) => (second_type, first_type),
             (SERVER_MESSAGE, CLIENT_MESSAGE) => (first_type, second_type),
             _ => {
-                let has_server_message = first_ident == SERVER_MESSAGE
-                    || second_ident == SERVER_MESSAGE;
-                let has_client_message = first_ident == CLIENT_MESSAGE
-                    || second_ident == CLIENT_MESSAGE;
+                let has_server_message =
+                    first_ident == SERVER_MESSAGE || second_ident == SERVER_MESSAGE;
+                let has_client_message =
+                    first_ident == CLIENT_MESSAGE || second_ident == CLIENT_MESSAGE;
 
                 if !has_server_message {
                     return Err(input.error(DeriveError::MissingServerMessage));
