@@ -37,7 +37,7 @@ where
     pub fn connections(&self) -> impl Iterator<Item = Result<Connection<T, R>, ConnectionError>> {
         self.listener.incoming().map(|conn| {
             conn.map(|c| Connection::new(c, self.opts.clone()))
-                .map_err(ConnectionError::IoError)
+                .map_err(ConnectionError::InitError)
         })
     }
 }

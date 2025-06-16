@@ -34,6 +34,7 @@ impl OptionsRaw {
     }
 }
 
+/// Options that are used to create a [`ClientServerModel`].
 pub struct ClientServerOptions<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,
@@ -123,8 +124,42 @@ where
     }
 }
 
+/// A specific model for interprocess communication, including what messages that can be sent back
+/// and forth as well as options used to create a model.
+///
+/// # Example
+/// ```
+/// use serde::{Serialize, Deserialize};
+/// use easy_ipc::prelude::*;
+///
+/// #[derive(Serialize, Deserialize)]
+/// enum ServerMessage {
+///     Ok,
+///     Fail,
+/// }
+///
+/// #[derive(Serialize, Deserialize)]
+/// enum ClientMessage {
+///     Go,
+///     Stop,
+/// }
+///
+/// struct MyModel;
+///
+/// impl IpcModel for MyModel {
+///     type ServerMsg = ServerMessage;
+///     type ClientMsg = ClientMessage;
+///     fn model() -> Result<ClientServerModel<Self::ClientMsg, Self::ServerMsg>, InitError> {
+///         Ok(ClientServerOptions::new("my_app").create())
+///     }
+/// }
+///
+///
+/// ```
 pub trait IpcModel {
+    /// The kind of messages the clients can send
     type ClientMsg: Serialize + for<'de> Deserialize<'de>;
+    /// The kind of messages the servers can send
     type ServerMsg: Serialize + for<'de> Deserialize<'de>;
 
     /// Generate a client/server model. See [`ClientServerOptions`] on how to create a new model.

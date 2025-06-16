@@ -1,4 +1,4 @@
-use easy_ipc::prelude::*;
+use easy_ipc::{error::InitError, prelude::*};
 use serde::{Deserialize, Serialize};
 
 /// Define you model and implement [`ClientServerModel`] for it.
@@ -9,9 +9,8 @@ impl IpcModel for MyModel {
     type ServerMsg = ServerMessage;
     type ClientMsg = ClientMessage;
 
-    fn model()
-    -> Result<ClientServerModel<Self::ClientMsg, Self::ServerMsg>, easy_ipc::error::InitError> {
-        ipc_model!()
+    fn model() -> Result<ClientServerModel<Self::ClientMsg, Self::ServerMsg>, InitError> {
+        Ok(ClientServerOptions::new("calculator").create())
     }
 }
 

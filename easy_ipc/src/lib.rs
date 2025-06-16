@@ -75,12 +75,22 @@
 //!
 //! This crate cannot handle non-blocking send/receive messages at the moment.
 
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![deny(missing_docs)]
+#![deny(unused_must_use)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+
 /// Common required imports
 pub mod prelude {
     pub use crate::ipc_model;
     pub use easy_ipc_derive::IpcModel;
 
     pub use crate::client::Client;
+    pub use crate::error::InitError;
     pub use crate::model::ClientServerModel;
     pub use crate::model::ClientServerOptions;
     pub use crate::model::IpcModel;

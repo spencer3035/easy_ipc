@@ -10,11 +10,16 @@ pub enum ConnectionError {
     PacketTooLarge,
     /// Not enough bytes to read the packet
     UnexepctedEof,
+    /// Failed serializing a struct
     SerilizationFailed(bitcode::Error),
+    /// Failed de-serializing a struct
     DeserilizationFailed(bitcode::Error),
+    /// Failed writing to the connection
     WriteFailed(std::io::Error),
+    /// Failed reading from the connection
     ReadFailed(std::io::Error),
-    IoError(std::io::Error),
+    /// Failing initializing the connection
+    InitError(std::io::Error),
 }
 
 impl Display for ConnectionError {
@@ -31,6 +36,7 @@ impl Display for ConnectionError {
     }
 }
 
+/// And error that occurred during initialization of a server or client.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum InitError {
