@@ -67,9 +67,9 @@ where
     // Try to make the directory here to make downstream stuff easier.
     if !path
         .try_exists()
-        .map_err(|e| InitError::FailedConnectingToSocket(e))?
+        .map_err(InitError::FailedConnectingToSocket)?
     {
-        std::fs::create_dir(&path).map_err(|e| InitError::FailedConnectingToSocket(e))?;
+        std::fs::create_dir(&path).map_err(InitError::FailedConnectingToSocket)?;
     }
     path.push(namespace.as_ref().with_extension("sock"));
     Ok(path)

@@ -196,7 +196,7 @@ where
     /// threads and processes.
     fn client(self) -> Result<Client<C, S>, InitError> {
         let name = pathbuf_to_interprocess_name(&self.options.options_inner.socket_name)?;
-        let stream = Stream::connect(name).map_err(|e| InitError::FailedConnectingToSocket(e))?;
+        let stream = Stream::connect(name).map_err(InitError::FailedConnectingToSocket)?;
         Ok(Client::new(self.options.options_inner, stream))
     }
 
@@ -255,11 +255,11 @@ where
             .ok_or(InitError::BadPath)?
             .to_owned()
             .to_ns_name::<GenericNamespaced>()
-            .map_err(|e| InitError::FailedConnectingToSocket(e))
+            .map_err(InitError::FailedConnectingToSocket)
     } else {
         path.as_ref()
             .to_owned()
             .to_fs_name::<GenericFilePath>()
-            .map_err(|e| InitError::FailedConnectingToSocket(e))
+            .map_err(InitError::FailedConnectingToSocket)
     }
 }

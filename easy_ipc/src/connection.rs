@@ -43,12 +43,12 @@ where
     /// Send a message to the other end of the connection.
     pub fn send(&mut self, message: T) -> Result<(), ConnectionError> {
         let bytes =
-            bitcode::serialize(&message).map_err(|e| ConnectionError::SerilizationFailed(e))?;
+            bitcode::serialize(&message).map_err(ConnectionError::SerilizationFailed)?;
         let packet_bytes = self.make_packet(bytes);
         self.connection
             .get_mut()
             .write_all(&packet_bytes)
-            .map_err(|e| ConnectionError::WriteFailed(e))?;
+            .map_err(ConnectionError::WriteFailed)?;
         Ok(())
     }
 
@@ -59,7 +59,7 @@ where
         let nread = self
             .connection
             .read(&mut header)
-            .map_err(|e| ConnectionError::ReadFailed(e))?;
+            .map_err(ConnectionError::ReadFailed)?;
 
         if nread != self.header_length() {
             // TODO: This usually gets hit when the server closes and a client tries to read from it. Maybe check for 0 and report a different error?
@@ -75,11 +75,11 @@ where
         let nread = self
             .connection
             .read(&mut data)
-            .map_err(|e| ConnectionError::ReadFailed(e))?;
+            .map_err(ConnectionError::ReadFailed)?;
         if nread != data_len {
             return Err(ConnectionError::UnexepctedEof);
         }
-        bitcode::deserialize(&data).map_err(|e| ConnectionError::DeserilizationFailed(e))
+        bitcode::deserialize(&data).map_err(ConnectionError::DeserilizationFailed)
     }
 
     fn make_packet(&self, data: Vec<u8>) -> Vec<u8> {

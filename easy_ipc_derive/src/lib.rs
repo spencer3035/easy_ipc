@@ -60,7 +60,7 @@ fn parse_message_type(input: &DeriveInput) -> Result<MessageAttributes, syn::Err
     }
 
     // Didn't find required attributes
-    Err(syn::Error::new_spanned(&input, DeriveError::GenericError))
+    Err(syn::Error::new_spanned(input, DeriveError::GenericError))
 }
 
 /// Errors that can happen
@@ -138,10 +138,10 @@ impl Parse for MessageAttributes {
             (CLIENT_MESSAGE, SERVER_MESSAGE) => (second_type, first_type),
             (SERVER_MESSAGE, CLIENT_MESSAGE) => (first_type, second_type),
             _ => {
-                let has_server_message = first_ident.to_string() == SERVER_MESSAGE
-                    || second_ident.to_string() == SERVER_MESSAGE;
-                let has_client_message = first_ident.to_string() == CLIENT_MESSAGE
-                    || second_ident.to_string() == CLIENT_MESSAGE;
+                let has_server_message = first_ident == SERVER_MESSAGE
+                    || second_ident == SERVER_MESSAGE;
+                let has_client_message = first_ident == CLIENT_MESSAGE
+                    || second_ident == CLIENT_MESSAGE;
 
                 if !has_server_message {
                     return Err(input.error(DeriveError::MissingServerMessage));
