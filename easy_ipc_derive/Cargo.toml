@@ -5,7 +5,11 @@ edition = "2024"
 authors = ["spencer3035 <spencer3035@gmail.com>"]
 description = "Easy interprocess communication framework"
 keywords = ["ipc", "interprocess"]
-license = "MIT NON-AI"
+categories = ["encoding"]
+homepage = "https://github.com/spencer3035/easy_ipc"
+repository = "https://github.com/spencer3035/easy_ipc"
+readme = "../README.md"
+license-file = "../LICENSE"
 
 [lib]
 proc-macro = true
