@@ -54,8 +54,7 @@ where
 {
     /// Creates a model in the given namespace with the default options.
     ///
-    /// Currently the namespace is equivalent to the name of the socket. See [`socket_name`] and
-    /// [`default_socket`] for easy methods of creating a socket name.
+    ///  See [`crate::namespace::namespace`] for easy methods of creating a namespace.
     pub fn new<P>(namespace: P) -> Self
     where
         P: AsRef<Path>,
@@ -92,16 +91,18 @@ where
     /// either need to do this yourself or deal with the issues associated with not doing it. In
     /// general, we assume in this library that you use the default implementation.
     ///
-    /// The function passed into this gets called a maximum of one time if [`Model::server`] is
+    /// The function passed into this gets called a maximum of one time if [`IpcModel::server`] is
     /// called.
     ///
     /// By default, we set up panic and signal handlers to automatically delete the socket file
     /// generated at the namespace set in [`ClientServerOptions`] so that when the program exists
     /// with Ctrl-c or a termination signal there are no issues with creating another server.
     ///
-    /// It is recommended you look at or use [`cleanup`] and also understand how this library works
-    /// under the hood before calling this method.
+    /// It is recommended you look at the internal implementation of these handlers for a referece.
+    /// and also understand how this library works under the hood before calling this method.
     pub fn handlers(mut self, hook: fn(&ClientServerModel<C, S>)) -> Self {
+        // If you are here to look for the internal implementation, look at the definition for the
+        // [`ClientServerOptions::new`] method to see what hook it sets by default.
         self.handler = hook;
         self
     }
@@ -122,7 +123,7 @@ where
     }
 }
 
-pub trait Model {
+pub trait IpcModel {
     type ClientMsg: Serialize + for<'de> Deserialize<'de>;
     type ServerMsg: Serialize + for<'de> Deserialize<'de>;
 
@@ -130,7 +131,8 @@ pub trait Model {
     ///
     /// This function needs to be pure (have no side effects) to be sound. The client and the
     /// server need to agree on what the model looks like in order to communicate. This is
-    /// partially enforced by the function taking no arguments. For simple use cases, use [`model`]
+    /// partially enforced by the function taking no arguments. For simple use cases, use
+    /// [`crate::ipc_model!`].
     fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
 
     /// Make a new client, errors if unable to connect to server.
@@ -162,7 +164,7 @@ pub trait Model {
 /// server messages are denoted by the generic `S`.
 ///
 /// The primary way to generate this is to use [`ClientServerOptions`] or a struct that implements
-/// [`Model`].
+/// [`IpcModel`].
 pub struct ClientServerModel<C, S>
 where
     C: Serialize + for<'de> Deserialize<'de>,

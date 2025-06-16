@@ -5,7 +5,7 @@ use interprocess::local_socket::{GenericNamespaced, NameType};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ConnectionError, InitError};
-use crate::handlers::cleanup;
+use crate::handlers::clean;
 use crate::prelude::*;
 
 macro_rules! define_model {
@@ -23,13 +23,13 @@ macro_rules! define_model {
         $($c_msg),*
     }
     struct $model_name;
-    impl Model for $model_name {
+    impl IpcModel for $model_name {
         type ServerMsg = $server_enum;
         type ClientMsg = $client_enum;
 
         fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
             let socket_name = $socket_name;
-            ClientServerOptions::new($crate::namespace::default_namespace(socket_name))
+            ClientServerOptions::new($crate::namespace::namespace(socket_name))
                 .disable_single_server_check()
                 .handlers(|_model| {})
                 .create()
@@ -51,7 +51,7 @@ fn basic_multi_client() {
     );
 
     let model = BasicModel::model();
-    cleanup(&model.options().socket_name);
+    clean(&model.options().socket_name);
     let server = BasicModel::server().unwrap();
 
     let mut handles = Vec::new();
@@ -100,7 +100,7 @@ fn basic_multi_server() {
     );
 
     let model = BasicModel::model();
-    cleanup(&model.options().socket_name);
+    clean(&model.options().socket_name);
     let _server = BasicModel::server().unwrap();
     assert!(matches!(
         BasicModel::server().unwrap_err(),
@@ -121,7 +121,7 @@ fn basic_send_receive() {
     );
 
     let model = BasicModel::model();
-    cleanup(&model.options().socket_name);
+    clean(&model.options().socket_name);
 
     let server = BasicModel::server().unwrap();
     if !GenericNamespaced::is_supported() {

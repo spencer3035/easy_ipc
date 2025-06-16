@@ -4,7 +4,7 @@ use std::{
 };
 
 use calculator_common::{ClientMessage, MyModel, ServerMessage};
-use easy_ipc::{connection::Connection, model::Model};
+use easy_ipc::{connection::Connection, model::IpcModel};
 
 static RUNNING: AtomicBool = AtomicBool::new(true);
 

@@ -6,15 +6,15 @@ use interprocess::local_socket::{GenericNamespaced, NameType};
 ///
 /// On linux it would be something like `"/run/user/1000/<filename>"`.
 /// ```
-/// use easy_ipc::namespace::default_namespace;
-/// let my_socket = default_namespace("myapp.socket");
+/// use easy_ipc::namespace::namespace;
+/// let my_socket = namespace("myapp.socket");
 /// ```
-pub fn default_namespace<P>(filename: P) -> PathBuf
+pub fn namespace<P>(namespace: P) -> PathBuf
 where
     P: AsRef<Path>,
 {
     let mut path = default_socket_path();
-    path.push(filename);
+    path.push(namespace);
     // TODO: Delete debug prints
     if GenericNamespaced::is_supported() {
         println!("Using generic namespaced");
@@ -42,7 +42,9 @@ fn default_socket_path() -> PathBuf {
 fn default_socket_path() -> PathBuf {
     use interprocess::local_socket::{GenericNamespaced, NameType};
 
-    if GenericNamespaced::is_supported() {
+    // Macos seems to struggle with leaving zombie sockets around if you use generic
+    // namespaces
+    if cfg!(not(target_os = "macos")) && GenericNamespaced::is_supported() {
         PathBuf::new()
     } else {
         default_socket_path_unix()
@@ -51,6 +53,8 @@ fn default_socket_path() -> PathBuf {
 
 #[cfg(target_family = "unix")]
 fn default_socket_path_unix() -> PathBuf {
+    // TODO: On macos, need to put in application in a path like the following:
+    // let path = "~/Library/Application Support/AppNameHere/socket/example.sock"
     let mut p = PathBuf::new();
     p.push("/run");
     p.push("user");

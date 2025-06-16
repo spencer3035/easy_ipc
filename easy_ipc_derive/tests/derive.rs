@@ -1,8 +1,8 @@
-use easy_ipc_derive::Model;
+use easy_ipc_derive::IpcModel;
 use serde::{Deserialize, Serialize};
 
 // Enum model
-#[derive(Model)]
+#[derive(IpcModel)]
 #[easy_ipc(server_message = ServerEnumMessage, client_message = ClientEnumMessage)]
 struct MyEnumModel;
 
@@ -18,7 +18,7 @@ enum ClientEnumMessage {
 }
 
 // Struct model
-#[derive(Model)]
+#[derive(IpcModel)]
 #[easy_ipc(server_message = ServerStructMessage, client_message = ClientStructMessage)]
 struct MyStructModel;
 

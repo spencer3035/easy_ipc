@@ -12,8 +12,8 @@ const SERVER_MESSAGE: &str = "server_message";
 const CLIENT_MESSAGE: &str = "client_message";
 
 /// Derive the easy_ipc::prelude::Model trait
-#[proc_macro_derive(Model, attributes(easy_ipc))]
-pub fn derive_model(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(IpcModel, attributes(easy_ipc))]
+pub fn ipc_model_derive(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 
@@ -30,11 +30,11 @@ pub fn derive_model(input: TokenStream) -> TokenStream {
 
     // Generate the appropriate implementation block
     let model_impl = quote! {
-        impl ::easy_ipc::prelude::Model for #name {
+        impl ::easy_ipc::prelude::IpcModel for #name {
             type ServerMsg = #server_message;
             type ClientMsg = #client_message;
             fn model() -> ::easy_ipc::prelude::ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-                ::easy_ipc::model!()
+                ::easy_ipc::ipc_model!()
             }
         }
     };

@@ -8,7 +8,7 @@
 //!
 //! 1. Define a server message that implements [`serde::Serialize`] and [`serde::Deserialize`].
 //! 1. Define a client message that implements [`serde::Serialize`] and [`serde::Deserialize`].
-//! 1. Define a struct that implements [`model::Model`], referencing your server and client messages.
+//! 1. Define a struct that implements [`model::IpcModel`], referencing your server and client messages.
 //!
 //! Then you are happy on your way to writing your application.
 //!
@@ -30,7 +30,7 @@
 //!     Fail,
 //! }
 //!
-//! #[derive(Model)]
+//! #[derive(IpcModel)]
 //! #[easy_ipc(client_message = ClientMessage, server_message = ServerMessage)]
 //! struct MyModel;
 //!
@@ -79,13 +79,14 @@
 
 /// Common required imports
 pub mod prelude {
+    pub use crate::ipc_model;
+    pub use easy_ipc_derive::IpcModel;
+
     pub use crate::client::Client;
-    pub use crate::model;
     pub use crate::model::ClientServerModel;
     pub use crate::model::ClientServerOptions;
-    pub use crate::model::Model;
+    pub use crate::model::IpcModel;
     pub use crate::server::Server;
-    pub use easy_ipc_derive::Model;
 }
 
 /// Client process
@@ -94,19 +95,19 @@ pub mod client;
 pub mod connection;
 /// Error enumerations
 pub mod error;
-/// Handle OS signals
-pub mod handlers;
 /// Definition of client server model
 pub mod model;
 /// Handle getting default namespace information
 pub mod namespace;
-/// Packets used to send data across the sockets
-pub(crate) mod packet;
 /// Server process
 pub mod server;
 
+/// Handle OS signals
+mod handlers;
 /// Helper macros
 mod macros;
+/// Packets used to send data across the sockets
+mod packet;
 /// Tests
 #[cfg(test)]
 mod test;

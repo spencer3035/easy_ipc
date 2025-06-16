@@ -7,11 +7,11 @@
 //! implementation at [../examples/full/].
 
 use easy_ipc::prelude::*;
-use easy_ipc_derive::Model;
+use easy_ipc_derive::IpcModel;
 use serde::{Deserialize, Serialize};
 
 /// Example Model
-#[derive(Debug, Copy, Clone, Model)]
+#[derive(Debug, Copy, Clone, IpcModel)]
 #[easy_ipc(client_message = ClientMessage, server_message = ServerMessage)]
 struct MyModel;
 

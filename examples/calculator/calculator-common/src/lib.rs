@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Copy, Clone)]
 pub struct MyModel;
 
-impl Model for MyModel {
+impl IpcModel for MyModel {
     type ServerMsg = ServerMessage;
     type ClientMsg = ClientMessage;
 
     fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
-        model!()
+        ipc_model!()
     }
 }
 
