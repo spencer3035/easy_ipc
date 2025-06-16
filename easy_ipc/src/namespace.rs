@@ -2,62 +2,75 @@ use std::path::{Path, PathBuf};
 
 use interprocess::local_socket::{GenericNamespaced, NameType};
 
-/// Gets a sensible default name of socket according to your OS and a final path name.
+use crate::error::InitError;
+
+/// Tries to get a sensible default path according to your OS and a name you pass in.
 ///
-/// On linux it would be something like `"/run/user/1000/<filename>"`.
+/// In general you should not pass a full path here. If you want to specify the exact path, just
+/// pass it in directly when defining [`crate::model::IpcModel::model`].
+///
+/// In general, [`GenericNamespaced`] names are avaliable and will work well. We fall back onto
+/// filesystem paths if that fails. We use the [`dirs::data_dir`] internally and append your
+/// namespace to it. It is rare that this will return `None`, it is generally fine to `.unwrap()`
+/// or `.expect("...")` this function. If you need more sophisticated error handling file creation,
+/// you should craft it up yourself when implmenting your [`crate::model::IpcModel`].
+///
 /// ```
 /// use easy_ipc::namespace::namespace;
-/// let my_socket = namespace("myapp.socket");
+/// let my_socket = namespace("myapp");
 /// ```
-pub fn namespace<P>(namespace: P) -> PathBuf
+///
+/// Uses [`filesystem_path`] internally.
+pub fn namespace<P>(namespace: P) -> Result<PathBuf, InitError>
 where
     P: AsRef<Path>,
 {
-    let mut path = default_socket_path();
-    path.push(namespace);
     // TODO: Delete debug prints
-    if GenericNamespaced::is_supported() {
+    let mut use_namespaced = GenericNamespaced::is_supported()
+        && namespace.as_ref().iter().count() == 1
+        && cfg!(not(target_os = "macos"));
+    use_namespaced = false;
+    if use_namespaced {
         println!("Using generic namespaced");
+        // Some(namespace.as_ref().to_path_buf())
+        Ok(namespace.as_ref().to_path_buf())
     } else {
-        println!("Using file: {}", path.display());
-    }
-    path
-}
-
-// TODO: Implement for "macos" "ios" "android" "freebsd" "dragonfly" "openbsd" "netbsd" "none"
-// should always fail, we need an os to do what this crate does.
-#[cfg(not(target_family = "unix"))]
-#[cfg(not(target_family = "windows"))]
-fn default_socket_path() -> PathBuf {
-    panic!("platform not supported")
-}
-
-#[cfg(target_family = "windows")]
-fn default_socket_path() -> PathBuf {
-    // Windows only supports pipes in namespaces
-    PathBuf::new()
-}
-
-#[cfg(target_family = "unix")]
-fn default_socket_path() -> PathBuf {
-    use interprocess::local_socket::{GenericNamespaced, NameType};
-
-    // Macos seems to struggle with leaving zombie sockets around if you use generic
-    // namespaces
-    if cfg!(not(target_os = "macos")) && GenericNamespaced::is_supported() {
-        PathBuf::new()
-    } else {
-        default_socket_path_unix()
+        filesystem_path(namespace)
     }
 }
 
-#[cfg(target_family = "unix")]
-fn default_socket_path_unix() -> PathBuf {
-    // TODO: On macos, need to put in application in a path like the following:
-    // let path = "~/Library/Application Support/AppNameHere/socket/example.sock"
-    let mut p = PathBuf::new();
-    p.push("/run");
-    p.push("user");
-    p.push(users::get_current_uid().to_string());
-    p
+/// Makes a filesystem path based on the host OS and the name you give.
+///
+/// Note that this also has a side effect of creating the directory to put the file in.
+///
+/// ```
+/// use easy_ipc::namespace::filesystem_path;
+/// use dirs::data_dir;
+/// # use std::path::PathBuf;
+///
+/// let app_name = "my_app";
+/// let name = filesystem_path(app_name).unwrap();
+///
+/// let mut expected = data_dir().unwrap();
+/// expected.push(app_name);
+/// expected.push(app_name.to_string() + ".sock");
+/// assert_eq!(name, expected);
+/// ```
+pub fn filesystem_path<P>(namespace: P) -> Result<PathBuf, InitError>
+where
+    P: AsRef<Path>,
+{
+    let mut path = dirs::data_dir().ok_or(InitError::FailedGettingNamespace)?;
+    path.push(&namespace);
+
+    // Try to make the directory here to make downstream stuff easier.
+    if !path
+        .try_exists()
+        .map_err(|e| InitError::FailedConnectingToSocket(e))?
+    {
+        std::fs::create_dir(&path).map_err(|e| InitError::FailedConnectingToSocket(e))?;
+    }
+    path.push(namespace.as_ref().with_extension("sock"));
+    println!("Using file: {}", path.display());
+    Ok(path)
 }

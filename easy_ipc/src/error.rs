@@ -34,6 +34,8 @@ impl Display for ConnectionError {
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum InitError {
+    /// Wasn't able to construct a namespace
+    FailedGettingNamespace,
     /// Path was not formatted correctly either for the os or the socket type.
     BadPath,
     /// Server is already connected an running, can't create a new one.

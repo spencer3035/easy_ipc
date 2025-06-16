@@ -133,7 +133,7 @@ pub trait IpcModel {
     /// server need to agree on what the model looks like in order to communicate. This is
     /// partially enforced by the function taking no arguments. For simple use cases, use
     /// [`crate::ipc_model!`].
-    fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg>;
+    fn model() -> Result<ClientServerModel<Self::ClientMsg, Self::ServerMsg>, InitError>;
 
     /// Make a new client, errors if unable to connect to server.
     ///
@@ -144,7 +144,7 @@ pub trait IpcModel {
     where
         Self: Sized,
     {
-        Self::model().client()
+        Self::model()?.client()
     }
 
     /// Try to create a new server instance.
@@ -156,7 +156,7 @@ pub trait IpcModel {
     where
         Self: Sized,
     {
-        Self::model().server()
+        Self::model()?.server()
     }
 }
 

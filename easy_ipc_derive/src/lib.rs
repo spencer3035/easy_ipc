@@ -33,7 +33,10 @@ pub fn ipc_model_derive(input: TokenStream) -> TokenStream {
         impl ::easy_ipc::prelude::IpcModel for #name {
             type ServerMsg = #server_message;
             type ClientMsg = #client_message;
-            fn model() -> ::easy_ipc::prelude::ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
+            fn model() -> ::std::result::Result<
+                ::easy_ipc::prelude::ClientServerModel<Self::ClientMsg, Self::ServerMsg>,
+                ::easy_ipc::error::InitError,
+            > {
                 ::easy_ipc::ipc_model!()
             }
         }

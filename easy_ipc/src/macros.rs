@@ -1,11 +1,8 @@
-/// Generates a socket based on your crate name.
-///
-/// On linux it would be something like `"/run/user/1000/mycrate.socket"` if your crate name was
-/// `mycrate`.
+/// Calls [`crate::namespace::namespace`] with `env!("CARGO_CRATE_NAME")`.
 #[macro_export]
 macro_rules! ipc_namespace {
     () => {{
-        let name = ::std::string::ToString::to_string(::std::env!("CARGO_CRATE_NAME")) + ".sock";
+        let name = ::std::string::ToString::to_string(::std::env!("CARGO_CRATE_NAME"));
         $crate::namespace::namespace(&name)
     }};
 }
@@ -18,15 +15,21 @@ macro_rules! ipc_version_string {
     };
 }
 
-/// Create a new [`crate::prelude::ClientServerModel`] instance with sane defaults
+/// Create a new [`crate::prelude::ClientServerModel`] instance with sane defaults.
 ///
-/// This makes use of [`ipc_version_string`] to create a header magic bytes and [`ipc_namespace`] to name
-/// the connection.
+/// This makes use of [`ipc_version_string`] to create header magic bytes and [`ipc_namespace`] to
+/// name the connection.
+///
+/// # Warning!
+///
+/// This panics at runtime if the default namespace cannot be resolved.
 #[macro_export]
 macro_rules! ipc_model {
     () => {
-        $crate::prelude::ClientServerOptions::new($crate::ipc_namespace!())
-            .magic_bytes($crate::ipc_version_string!())
-            .create()
+        Ok(
+            $crate::prelude::ClientServerOptions::new($crate::ipc_namespace!()?)
+                .magic_bytes($crate::ipc_version_string!())
+                .create(),
+        )
     };
 }

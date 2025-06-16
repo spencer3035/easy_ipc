@@ -9,7 +9,8 @@ impl IpcModel for MyModel {
     type ServerMsg = ServerMessage;
     type ClientMsg = ClientMessage;
 
-    fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
+    fn model()
+    -> Result<ClientServerModel<Self::ClientMsg, Self::ServerMsg>, easy_ipc::error::InitError> {
         ipc_model!()
     }
 }

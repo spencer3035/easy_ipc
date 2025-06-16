@@ -27,12 +27,12 @@ macro_rules! define_model {
         type ServerMsg = $server_enum;
         type ClientMsg = $client_enum;
 
-        fn model() -> ClientServerModel<Self::ClientMsg, Self::ServerMsg> {
+        fn model() -> Result<ClientServerModel<Self::ClientMsg, Self::ServerMsg>, InitError> {
             let socket_name = $socket_name;
-            ClientServerOptions::new($crate::namespace::namespace(socket_name))
+            Ok(ClientServerOptions::new($crate::namespace::namespace(socket_name)?)
                 .disable_single_server_check()
                 .handlers(|_model| {})
-                .create()
+                .create())
         }
     }
     };
@@ -50,7 +50,7 @@ fn basic_multi_client() {
         },
     );
 
-    let model = BasicModel::model();
+    let model = BasicModel::model().unwrap();
     clean(&model.options().socket_name);
     let server = BasicModel::server().unwrap();
 
@@ -99,7 +99,7 @@ fn basic_multi_server() {
         },
     );
 
-    let model = BasicModel::model();
+    let model = BasicModel::model().unwrap();
     clean(&model.options().socket_name);
     let _server = BasicModel::server().unwrap();
     assert!(matches!(
@@ -120,7 +120,7 @@ fn basic_send_receive() {
         },
     );
 
-    let model = BasicModel::model();
+    let model = BasicModel::model().unwrap();
     clean(&model.options().socket_name);
 
     let server = BasicModel::server().unwrap();
