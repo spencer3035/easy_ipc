@@ -104,8 +104,6 @@ pub mod server;
 mod handlers;
 /// Helper macros
 mod macros;
-/// Packets used to send data across the sockets
-mod packet;
 /// Tests
 #[cfg(test)]
 mod test;
